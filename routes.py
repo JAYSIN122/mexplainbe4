@@ -23,10 +23,17 @@ def make_serializable(obj):
         return make_serializable(obj.tolist())
     if isinstance(obj, np.generic):
         return obj.item()
+    if isinstance(obj, (np.integer, np.floating)):
+        return obj.item()
     if isinstance(obj, dict):
         return {key: make_serializable(value) for key, value in obj.items()}
     if isinstance(obj, (list, tuple)):
         return [make_serializable(item) for item in obj]
+    if hasattr(obj, '__dict__') and not isinstance(obj, type):
+        # Handle custom objects by converting their __dict__
+        return make_serializable(obj.__dict__)
+    if obj is np.inf or obj is -np.inf or (isinstance(obj, float) and np.isnan(obj)):
+        return None  # Convert inf/nan to None for JSON safety
     return obj
 
 # Initialize processors

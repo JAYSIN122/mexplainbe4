@@ -40,9 +40,11 @@ function initializeDashboard() {
     
     // Initialize tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
+    if (typeof bootstrap !== 'undefined') {
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
     
     console.log('Dashboard initialization complete');
 }
@@ -244,43 +246,20 @@ function updateDashboardMetrics(results) {
     });
 }
 
-function refreshCharts() {
-    if (typeof updateAllCharts === 'function') {
-        updateAllCharts();
-    }
-    
-    // Update last refresh indicator
-    const lastRefreshElement = document.getElementById('last-refresh');
-    if (lastRefreshElement) {
-        const now = new Date();
-        lastRefreshElement.textContent = now.toLocaleTimeString();
-        dashboardState.lastRefreshTime = now;
-    }
-    
-    showNotification('Charts refreshed', 'info', 2000);
-}
-
 function showNotification(message, type = 'info', duration = 5000) {
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-    notification.style.cssText = `
-        top: 20px;
-        right: 20px;
-        z-index: 1050;
-        min-width: 300px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    `;
-    
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 1050; max-width: 400px;';
     notification.innerHTML = `
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     
-    // Add to document
+    // Add to page
     document.body.appendChild(notification);
     
-    // Auto-remove after duration
+    // Auto-remove after specified duration
     setTimeout(() => {
         if (notification.parentNode) {
             notification.remove();
@@ -288,93 +267,17 @@ function showNotification(message, type = 'info', duration = 5000) {
     }, duration);
 }
 
-function formatScientificValue(value, precision = 3) {
-    if (value === null || value === undefined) return '--';
-    
-    if (Math.abs(value) < 0.001 || Math.abs(value) > 1000) {
-        return value.toExponential(precision);
-    } else {
-        return value.toFixed(precision);
-    }
-}
-
-function formatTimestamp(timestamp) {
-    if (!timestamp) return '--';
-    
-    const date = new Date(timestamp);
-    return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
-}
-
-function exportData(format = 'json') {
-    // Get current GTI history
-    fetch('/api/gti_history?hours=24')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                let exportData;
-                let filename;
-                let mimeType;
-                
-                switch (format) {
-                    case 'csv':
-                        exportData = convertToCSV(data.data);
-                        filename = `gti_data_${new Date().toISOString().slice(0, 10)}.csv`;
-                        mimeType = 'text/csv';
-                        break;
-                    case 'json':
-                    default:
-                        exportData = JSON.stringify(data.data, null, 2);
-                        filename = `gti_data_${new Date().toISOString().slice(0, 10)}.json`;
-                        mimeType = 'application/json';
-                }
-                
-                // Create download link
-                const blob = new Blob([exportData], { type: mimeType });
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = filename;
-                link.click();
-                
-                window.URL.revokeObjectURL(url);
-                showNotification(`Data exported as ${filename}`, 'success');
-            } else {
-                showNotification('Export failed: ' + data.message, 'danger');
-            }
-        })
-        .catch(error => {
-            console.error('Export error:', error);
-            showNotification('Export error: ' + error.message, 'danger');
-        });
-}
-
-function convertToCSV(data) {
-    if (!data.timestamps || data.timestamps.length === 0) {
-        return 'No data available';
+function refreshCharts() {
+    console.log('Refreshing charts...');
+    if (typeof updateAllCharts === 'function') {
+        updateAllCharts();
     }
     
-    const headers = ['timestamp', 'gti_value', 'phase_gap', 'coherence', 'alert_level'];
-    const rows = [headers.join(',')];
-    
-    for (let i = 0; i < data.timestamps.length; i++) {
-        const row = [
-            data.timestamps[i] || '',
-            data.gti_values[i] || '',
-            data.phase_gaps[i] || '',
-            data.coherence_values[i] || '',
-            data.alert_levels[i] || ''
-        ];
-        rows.push(row.join(','));
+    // Update last refresh time
+    const lastRefreshElement = document.getElementById('last-refresh');
+    if (lastRefreshElement) {
+        const now = new Date();
+        lastRefreshElement.textContent = now.toLocaleTimeString();
+        dashboardState.lastRefreshTime = now;
     }
-    
-    return rows.join('\n');
 }
-
-// Expose global functions
-window.ingestData = ingestData;
-window.runAnalysis = runAnalysis;
-window.refreshCharts = refreshCharts;
-window.exportData = exportData;
-window.showNotification = showNotification;
-window.formatScientificValue = formatScientificValue;
-window.formatTimestamp = formatTimestamp;
