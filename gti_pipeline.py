@@ -72,22 +72,22 @@ class GTIPipeline:
             # Step 8: Calculate GTI
             gti_result = self._calculate_gti(coherence_results, common_component, phase_results)
             
-            # Compile complete results
+            # Compile complete results - ensure all values are JSON serializable
             results = {
                 'timestamp': datetime.utcnow().isoformat(),
-                'gti_value': gti_result['gti'],
-                'phase_gap_degrees': phase_results['phase_gap_degrees'],
-                'coherence_median': coherence_results['median_coherence'],
-                'variance_explained': common_component['variance_explained'],
-                'bayes_factor': bayes_results['bayes_factor'],
-                'time_to_overlap': phase_results['time_to_overlap'],
+                'gti_value': float(gti_result['gti']),
+                'phase_gap_degrees': float(phase_results['phase_gap_degrees']),
+                'coherence_median': float(coherence_results['median_coherence']),
+                'variance_explained': float(common_component['variance_explained']),
+                'bayes_factor': float(bayes_results['bayes_factor']),
+                'time_to_overlap': float(phase_results['time_to_overlap']),
                 'alert_level': self._determine_alert_level(gti_result['gti']),
-                'detailed_results': {
+                'detailed_results': self._make_json_safe({
                     'coherence': coherence_results,
                     'phase_analysis': phase_results,
                     'bayesian': bayes_results,
                     'component_analysis': common_component
-                }
+                })
             }
             
             logger.info(f"GTI pipeline completed. GTI value: {gti_result['gti']:.6f}")
@@ -96,6 +96,27 @@ class GTIPipeline:
         except Exception as e:
             logger.error(f"Error in GTI pipeline processing: {str(e)}")
             raise
+    
+    def _make_json_safe(self, obj):
+        """Recursively convert NumPy types to Python native types"""
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, (np.integer, np.floating, np.complexfloating)):
+            return obj.item()
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, dict):
+            return {str(key): self._make_json_safe(value) for key, value in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [self._make_json_safe(item) for item in obj]
+        elif isinstance(obj, set):
+            return [self._make_json_safe(item) for item in list(obj)]
+        elif hasattr(obj, '__dict__') and not isinstance(obj, (type, int, float, str, bool)):
+            return self._make_json_safe(obj.__dict__)
+        elif isinstance(obj, float) and (np.isinf(obj) or np.isnan(obj)):
+            return None
+        else:
+            return obj
     
     def _prepare_residuals(self, stream_data):
         """Prepare residuals from raw stream data"""
