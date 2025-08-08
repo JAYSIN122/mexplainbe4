@@ -16,6 +16,19 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+
+def make_serializable(obj):
+    """Recursively convert NumPy types to Python native types."""
+    if isinstance(obj, np.ndarray):
+        return make_serializable(obj.tolist())
+    if isinstance(obj, np.generic):
+        return obj.item()
+    if isinstance(obj, dict):
+        return {key: make_serializable(value) for key, value in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [make_serializable(item) for item in obj]
+    return obj
+
 # Initialize processors
 pipeline = GTIPipeline()
 data_ingestion = DataIngestion()
@@ -203,7 +216,7 @@ def api_run_analysis():
         
         return jsonify({
             'success': True,
-            'results': results
+            'results': make_serializable(results)
         })
         
     except Exception as e:
