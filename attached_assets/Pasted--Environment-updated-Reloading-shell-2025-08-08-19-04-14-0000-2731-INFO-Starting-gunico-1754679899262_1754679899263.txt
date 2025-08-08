@@ -1,0 +1,46 @@
+ Environment updated. Reloading shell...
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Starting gunicorn 23.0.0
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Listening at: http://0.0.0.0:5000 (2731)
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Using worker: sync
+[2025-08-08 19:04:14 +0000] [2803] [INFO] Booting worker with pid: 2803
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:14 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:15 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:15 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:15 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:15 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:15 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:15 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:15 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:15 +0000] [2731] [INFO] Handling signal: winch
+[2025-08-08 19:04:15 +0000] [2731] [INFO] Handling signal: winch
+INFO:data_ingestion:Generating minimal synthetic data for tai
+INFO:data_ingestion:Successfully ingested 100 points from TAI
+INFO:data_ingestion:Generating minimal synthetic data for gnss
+INFO:data_ingestion:Successfully ingested 100 points from GNSS
+INFO:data_ingestion:Generating minimal synthetic data for vlbi
+INFO:data_ingestion:Successfully ingested 100 points from VLBI
+INFO:data_ingestion:Generating minimal synthetic data for pta
+INFO:data_ingestion:Successfully ingested 100 points from PTA
+INFO:gti_pipeline:Starting GTI pipeline processing
+INFO:gti_pipeline:GTI pipeline completed. GTI value: 0.165163
+ERROR:routes:Error in analysis API: Object of type ndarray is not JSON serializable

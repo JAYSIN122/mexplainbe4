@@ -19,22 +19,34 @@ logger = logging.getLogger(__name__)
 
 def make_serializable(obj):
     """Recursively convert NumPy types to Python native types."""
-    if isinstance(obj, np.ndarray):
-        return make_serializable(obj.tolist())
-    if isinstance(obj, np.generic):
-        return obj.item()
-    if isinstance(obj, (np.integer, np.floating)):
-        return obj.item()
-    if isinstance(obj, dict):
-        return {key: make_serializable(value) for key, value in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [make_serializable(item) for item in obj]
-    if hasattr(obj, '__dict__') and not isinstance(obj, type):
-        # Handle custom objects by converting their __dict__
-        return make_serializable(obj.__dict__)
-    if obj is np.inf or obj is -np.inf or (isinstance(obj, float) and np.isnan(obj)):
-        return None  # Convert inf/nan to None for JSON safety
-    return obj
+    try:
+        if obj is None:
+            return None
+        if isinstance(obj, np.ndarray):
+            return make_serializable(obj.tolist())
+        if isinstance(obj, (np.generic, np.integer, np.floating, np.complexfloating)):
+            return obj.item()
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        if isinstance(obj, dict):
+            return {str(key): make_serializable(value) for key, value in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            return [make_serializable(item) for item in obj]
+        if isinstance(obj, set):
+            return list(make_serializable(list(obj)))
+        if hasattr(obj, '__dict__') and not isinstance(obj, (type, int, float, str, bool)):
+            # Handle custom objects by converting their __dict__
+            return make_serializable(obj.__dict__)
+        if isinstance(obj, (int, float, str, bool)):
+            # Check for special float values
+            if isinstance(obj, float) and (np.isinf(obj) or np.isnan(obj)):
+                return None
+            return obj
+        # For any other type, try to convert to string as last resort
+        return str(obj)
+    except Exception as e:
+        logger.warning(f"Could not serialize object of type {type(obj)}: {e}")
+        return None
 
 # Initialize processors
 pipeline = GTIPipeline()
@@ -221,9 +233,27 @@ def api_run_analysis():
         
         db.session.commit()
         
+        # Serialize results with additional safety
+        try:
+            serialized_results = make_serializable(results)
+            # Test that it can actually be JSON serialized
+            import json
+            json.dumps(serialized_results)
+        except Exception as serialize_error:
+            logger.warning(f"Results serialization failed: {serialize_error}, using summary instead")
+            # Return a safe summary if full results can't be serialized
+            serialized_results = {
+                'gti_value': float(results.get('gti_value', 0)),
+                'phase_gap_degrees': float(results.get('phase_gap_degrees', 0)),
+                'coherence_median': float(results.get('coherence_median', 0)),
+                'variance_explained': float(results.get('variance_explained', 0)),
+                'alert_level': str(results.get('alert_level', 'UNKNOWN')),
+                'timestamp': str(results.get('timestamp', datetime.utcnow().isoformat()))
+            }
+        
         return jsonify({
             'success': True,
-            'results': make_serializable(results)
+            'results': serialized_results
         })
         
     except Exception as e:
