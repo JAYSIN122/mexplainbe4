@@ -1,0 +1,365 @@
+/**
+ * Custom CSS for Temporal Monitoring System
+ * Minimal overrides maintaining Bootstrap dark theme consistency
+ */
+
+/* Scientific data display improvements */
+.scientific-value {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.metric-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Status indicators */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot.healthy {
+    background-color: var(--bs-success);
+    box-shadow: 0 0 4px var(--bs-success);
+}
+
+.status-dot.warning {
+    background-color: var(--bs-warning);
+    box-shadow: 0 0 4px var(--bs-warning);
+}
+
+.status-dot.critical {
+    background-color: var(--bs-danger);
+    box-shadow: 0 0 4px var(--bs-danger);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Chart containers */
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin: 1rem 0;
+}
+
+.chart-container canvas {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 0.375rem;
+}
+
+/* Alert level styling */
+.alert-critical {
+    background-color: rgba(220, 53, 69, 0.1);
+    border: 1px solid var(--bs-danger);
+    color: var(--bs-danger);
+}
+
+.alert-high {
+    background-color: rgba(255, 193, 7, 0.1);
+    border: 1px solid var(--bs-warning);
+    color: var(--bs-warning);
+}
+
+.alert-medium {
+    background-color: rgba(13, 202, 240, 0.1);
+    border: 1px solid var(--bs-info);
+    color: var(--bs-info);
+}
+
+.alert-low {
+    background-color: rgba(25, 135, 84, 0.1);
+    border: 1px solid var(--bs-success);
+    color: var(--bs-success);
+}
+
+/* Data stream status cards */
+.stream-status {
+    border-left: 4px solid transparent;
+    transition: border-color 0.3s ease;
+}
+
+.stream-status.active {
+    border-left-color: var(--bs-success);
+}
+
+.stream-status.stale {
+    border-left-color: var(--bs-warning);
+}
+
+.stream-status.offline {
+    border-left-color: var(--bs-danger);
+}
+
+/* Configuration forms */
+.config-section {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.config-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.form-control:focus,
+.form-select:focus {
+    box-shadow: 0 0 0 0.2rem rgba(54, 162, 235, 0.25);
+    border-color: rgba(54, 162, 235, 0.5);
+}
+
+/* Analysis tools */
+.analysis-controls {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Loading states */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    z-index: 10;
+}
+
+.loading-spinner {
+    color: var(--bs-primary);
+    font-size: 2rem;
+}
+
+/* Notification positioning */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+    max-width: 400px;
+}
+
+/* Table improvements for scientific data */
+.table-scientific td {
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+}
+
+.table-scientific .value-cell {
+    text-align: right;
+    font-weight: 600;
+}
+
+/* Phase relationship visualizations */
+.phase-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+    margin: 0 5px;
+}
+
+.phase-indicator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2px;
+    height: 8px;
+    background: var(--bs-body-color);
+    transform-origin: bottom center;
+    transform: translate(-50%, -100%);
+}
+
+/* Coherence matrix styling */
+.coherence-matrix {
+    display: grid;
+    gap: 0.25rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 0.375rem;
+}
+
+.coherence-cell {
+    padding: 0.5rem;
+    text-align: center;
+    border-radius: 0.25rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    transition: background-color 0.3s ease;
+}
+
+/* Bayesian analysis indicators */
+.bayes-factor {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    display: inline-block;
+}
+
+.bayes-factor.decisive {
+    background-color: rgba(25, 135, 84, 0.2);
+    color: var(--bs-success);
+}
+
+.bayes-factor.strong {
+    background-color: rgba(13, 202, 240, 0.2);
+    color: var(--bs-info);
+}
+
+.bayes-factor.moderate {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: var(--bs-warning);
+}
+
+.bayes-factor.weak {
+    background-color: rgba(108, 117, 125, 0.2);
+    color: var(--bs-secondary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .chart-container {
+        height: 250px;
+    }
+    
+    .metric-card {
+        margin-bottom: 1rem;
+    }
+    
+    .analysis-controls {
+        padding: 1rem;
+    }
+    
+    .notification-container {
+        left: 10px;
+        right: 10px;
+        max-width: none;
+    }
+}
+
+/* Print styles for reports */
+@media print {
+    .navbar,
+    .btn,
+    .alert {
+        display: none;
+    }
+    
+    .card {
+        border: 1px solid #333;
+        break-inside: avoid;
+    }
+    
+    .chart-container {
+        height: auto;
+    }
+}
+
+/* Dark theme enhancements */
+.card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-header {
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Timeline indicators */
+.timeline-marker {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline-marker::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    top: 0.5rem;
+    width: 8px;
+    height: 8px;
+    background: var(--bs-primary);
+    border-radius: 50%;
+}
+
+.timeline-marker.critical::before {
+    background: var(--bs-danger);
+    box-shadow: 0 0 4px var(--bs-danger);
+}
+
+/* Scientific notation improvements */
+.scientific-notation {
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+}
+
+.exponent {
+    font-size: 0.8em;
+    vertical-align: super;
+}
+
+/* Data quality indicators */
+.data-quality {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.quality-bar {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.quality-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.quality-excellent .quality-fill {
+    background: var(--bs-success);
+}
+
+.quality-good .quality-fill {
+    background: var(--bs-info);
+}
+
+.quality-fair .quality-fill {
+    background: var(--bs-warning);
+}
+
+.quality-poor .quality-fill {
+    background: var(--bs-danger);
+}

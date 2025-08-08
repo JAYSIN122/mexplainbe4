@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Temporal Monitoring{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- GTI Status Card -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-bullseye me-2"></i>GTI Status
+                        </h5>
+                        {% if latest_gti %}
+                            <h2 class="mt-2 mb-1 
+                                {% if latest_gti.alert_level == 'CRITICAL' %}text-danger
+                                {% elif latest_gti.alert_level == 'HIGH' %}text-warning
+                                {% elif latest_gti.alert_level == 'MEDIUM' %}text-info
+                                {% else %}text-success{% endif %}">
+                                {{ "%.6f"|format(latest_gti.gti_value) }}
+                            </h2>
+                            <span class="badge 
+                                {% if latest_gti.alert_level == 'CRITICAL' %}bg-danger
+                                {% elif latest_gti.alert_level == 'HIGH' %}bg-warning
+                                {% elif latest_gti.alert_level == 'MEDIUM' %}bg-info
+                                {% else %}bg-success{% endif %}">
+                                {{ latest_gti.alert_level }}
+                            </span>
+                        {% else %}
+                            <h2 class="mt-2 mb-1 text-muted">--</h2>
+                            <span class="badge bg-secondary">NO DATA</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-end">
+                        <i class="fas fa-chart-line fa-2x text-primary"></i>
+                    </div>
+                </div>
+                {% if latest_gti %}
+                    <small class="text-muted">
+                        Last updated: {{ latest_gti.timestamp.strftime('%Y-%m-%d %H:%M:%S') }} UTC
+                    </small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase Gap Card -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-wave-square me-2"></i>Phase Gap
+                        </h5>
+                        {% if latest_gti and latest_gti.phase_gap %}
+                            <h2 class="mt-2 mb-1">{{ "%.2f"|format(latest_gti.phase_gap) }}°</h2>
+                            <small class="text-muted">
+                                {% if latest_gti.time_to_overlap and latest_gti.time_to_overlap != None and latest_gti.time_to_overlap < 999999 %}
+                                    Overlap in: {{ "%.1f"|format(latest_gti.time_to_overlap) }} time units
+                                {% else %}
+                                    No convergence detected
+                                {% endif %}
+                            </small>
+                        {% else %}
+                            <h2 class="mt-2 mb-1 text-muted">--</h2>
+                            <small class="text-muted">No phase data</small>
+                        {% endif %}
+                    </div>
+                    <div class="text-end">
+                        <i class="fas fa-sync-alt fa-2x text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coherence Card -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-signal me-2"></i>Stream Coherence
+                        </h5>
+                        {% if latest_gti and latest_gti.coherence_median %}
+                            <h2 class="mt-2 mb-1">{{ "%.4f"|format(latest_gti.coherence_median) }}</h2>
+                            <small class="text-muted">
+                                Variance explained: 
+                                {% if latest_gti.variance_explained %}
+                                    {{ "%.1f"|format(latest_gti.variance_explained * 100) }}%
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </small>
+                        {% else %}
+                            <h2 class="mt-2 mb-1 text-muted">--</h2>
+                            <small class="text-muted">No coherence data</small>
+                        {% endif %}
+                    </div>
+                    <div class="text-end">
+                        <i class="fas fa-wave-square fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- GTI Trend Chart -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>GTI Timeline
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="gti-chart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Stream Status -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-database me-2"></i>Data Streams
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for stream_type, status in stream_status.items() %}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <strong>{{ stream_type }}</strong>
+                            <br>
+                            <small class="text-muted">
+                                {% if status.last_update %}
+                                    {{ status.last_update[:16] }}
+                                {% else %}
+                                    No data
+                                {% endif %}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge 
+                                {% if status.status == 'active' %}bg-success
+                                {% elif status.status == 'stale' %}bg-warning
+                                {% else %}bg-danger{% endif %}">
+                                {{ status.status|upper }}
+                            </span>
+                            {% if status.latest_value %}
+                                <br>
+                                <small class="text-muted">{{ "%.2e"|format(status.latest_value) }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Phase Gap Chart -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-wave-square me-2"></i>Phase Gap Evolution
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="phase-chart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coherence Chart -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-signal me-2"></i>Stream Coherence
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="coherence-chart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Control Panel -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-play me-2"></i>Control Panel
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <button class="btn btn-primary me-2" onclick="ingestData()">
+                            <i class="fas fa-download me-1"></i>Ingest Data
+                        </button>
+                        <button class="btn btn-success me-2" onclick="runAnalysis()">
+                            <i class="fas fa-calculator me-1"></i>Run Analysis
+                        </button>
+                        <button class="btn btn-info" onclick="refreshCharts()">
+                            <i class="fas fa-sync me-1"></i>Refresh Charts
+                        </button>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="form-check form-switch d-inline-block me-3">
+                            <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
+                            <label class="form-check-label" for="auto-refresh">
+                                Auto-refresh (30s)
+                            </label>
+                        </div>
+                        <span class="badge bg-secondary" id="last-refresh">Never</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+    // Initialize dashboard when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeCharts();
+        refreshCharts();
+        
+        // Set up auto-refresh
+        setInterval(function() {
+            if (document.getElementById('auto-refresh').checked) {
+                refreshCharts();
+            }
+        }, 30000); // 30 seconds
+    });
+</script>
+{% endblock %}

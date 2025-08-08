@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis - Temporal Monitoring{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Analysis Controls -->
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-microscope me-2"></i>Advanced Analysis Tools
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label for="analysis-timespan" class="form-label">Time Span</label>
+                                <select class="form-select" id="analysis-timespan">
+                                    <option value="1">Last 1 hour</option>
+                                    <option value="6">Last 6 hours</option>
+                                    <option value="24" selected>Last 24 hours</option>
+                                    <option value="168">Last 7 days</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="stream-filter" class="form-label">Stream Filter</label>
+                                <select class="form-select" id="stream-filter">
+                                    <option value="all" selected>All Streams</option>
+                                    <option value="TAI">TAI Only</option>
+                                    <option value="GNSS">GNSS Only</option>
+                                    <option value="VLBI">VLBI Only</option>
+                                    <option value="PTA">PTA Only</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="analysis-type" class="form-label">Analysis Type</label>
+                                <select class="form-select" id="analysis-type">
+                                    <option value="coherence" selected>Coherence</option>
+                                    <option value="phase">Phase Analysis</option>
+                                    <option value="spectral">Spectral</option>
+                                    <option value="bayesian">Bayesian</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">&nbsp;</label>
+                                <button class="btn btn-primary d-block w-100" onclick="runDetailedAnalysis()">
+                                    <i class="fas fa-play me-1"></i>Run Analysis
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="d-flex justify-content-end align-items-end h-100">
+                            <button class="btn btn-outline-secondary me-2" onclick="exportAnalysis()">
+                                <i class="fas fa-download me-1"></i>Export
+                            </button>
+                            <button class="btn btn-outline-info" onclick="generateReport()">
+                                <i class="fas fa-file-alt me-1"></i>Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Cross-Spectral Coherence -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-wave-square me-2"></i>Cross-Spectral Coherence Matrix
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="coherence-matrix-chart" height="400"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase Relationship -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-sync-alt me-2"></i>Phase Relationships
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="phase-polar-chart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Spectral Analysis -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Power Spectral Density
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="psd-chart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Component Analysis -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-project-diagram me-2"></i>Principal Component Analysis
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="pca-chart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Bayesian Model Selection -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-balance-scale me-2"></i>Bayesian Model Selection
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Model Probabilities</h6>
+                        <canvas id="model-prob-chart" height="200"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Bayes Factor Evolution</h6>
+                        <canvas id="bayes-factor-chart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Summary -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-clipboard-list me-2"></i>Analysis Summary
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="analysis-summary">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-chart-line fa-3x mb-3"></i>
+                        <p>Run an analysis to see results</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Analysis Results -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Recent Analysis Results
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Analysis Type</th>
+                                <th>Key Results</th>
+                                <th>Confidence</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analysis-results-table">
+                            {% for result in coherence_results + phase_results + bayesian_results %}
+                                <tr>
+                                    <td>{{ result.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ result.analysis_type }}</span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {% set data = result.get_result_data() %}
+                                            {% if data %}
+                                                {% for key, value in data.items() %}
+                                                    {% if loop.index <= 2 %}
+                                                        <strong>{{ key }}:</strong> 
+                                                        {% if value is number %}
+                                                            {{ "%.4f"|format(value) }}
+                                                        {% else %}
+                                                            {{ value|truncate(20) }}
+                                                        {% endif %}
+                                                        {% if not loop.last %}<br>{% endif %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% else %}
+                                                No details available
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {% set confidence = (data.get('confidence', 0.5) * 100) if data else 50 %}
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar 
+                                                {% if confidence >= 80 %}bg-success
+                                                {% elif confidence >= 60 %}bg-info
+                                                {% elif confidence >= 40 %}bg-warning
+                                                {% else %}bg-danger{% endif %}" 
+                                                style="width: {{ confidence }}%"></div>
+                                        </div>
+                                        <small class="text-muted">{{ "%.0f"|format(confidence) }}%</small>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                onclick="viewAnalysisDetails({{ result.id }})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            
+                            {% if not (coherence_results or phase_results or bayesian_results) %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        No analysis results available. Run an analysis to see results here.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize analysis charts
+    let coherenceMatrixChart, phasePolarChart, psdChart, pcaChart, modelProbChart, bayesFactorChart;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeAnalysisCharts();
+    });
+
+    function initializeAnalysisCharts() {
+        // Initialize all analysis charts with empty data
+        const ctx1 = document.getElementById('coherence-matrix-chart').getContext('2d');
+        coherenceMatrixChart = new Chart(ctx1, {
+            type: 'scatter',
+            data: { datasets: [] },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Frequency (Hz)' } },
+                    y: { title: { display: true, text: 'Coherence' } }
+                }
+            }
+        });
+
+        const ctx2 = document.getElementById('phase-polar-chart').getContext('2d');
+        phasePolarChart = new Chart(ctx2, {
+            type: 'polarArea',
+            data: { datasets: [] },
+            options: { responsive: true }
+        });
+
+        const ctx3 = document.getElementById('psd-chart').getContext('2d');
+        psdChart = new Chart(ctx3, {
+            type: 'line',
+            data: { datasets: [] },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Frequency (Hz)' } },
+                    y: { title: { display: true, text: 'Power (dB)' }, type: 'logarithmic' }
+                }
+            }
+        });
+
+        const ctx4 = document.getElementById('pca-chart').getContext('2d');
+        pcaChart = new Chart(ctx4, {
+            type: 'bar',
+            data: { datasets: [] },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { title: { display: true, text: 'Variance Explained' } }
+                }
+            }
+        });
+
+        const ctx5 = document.getElementById('model-prob-chart').getContext('2d');
+        modelProbChart = new Chart(ctx5, {
+            type: 'doughnut',
+            data: { datasets: [] },
+            options: { responsive: true }
+        });
+
+        const ctx6 = document.getElementById('bayes-factor-chart').getContext('2d');
+        bayesFactorChart = new Chart(ctx6, {
+            type: 'line',
+            data: { datasets: [] },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { title: { display: true, text: 'Log Bayes Factor' } }
+                }
+            }
+        });
+    }
+
+    function runDetailedAnalysis() {
+        const timespan = document.getElementById('analysis-timespan').value;
+        const streamFilter = document.getElementById('stream-filter').value;
+        const analysisType = document.getElementById('analysis-type').value;
+
+        // Show loading state
+        document.getElementById('analysis-summary').innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Running ${analysisType} analysis...</p>
+            </div>
+        `;
+
+        // Run analysis
+        fetch('/api/run_analysis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                timespan: parseInt(timespan),
+                stream_filter: streamFilter,
+                analysis_type: analysisType
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateAnalysisCharts(data.results);
+                updateAnalysisSummary(data.results);
+            } else {
+                showAnalysisError(data.message);
+            }
+        })
+        .catch(error => {
+            showAnalysisError('Analysis failed: ' + error.message);
+        });
+    }
+
+    function updateAnalysisCharts(results) {
+        // Update charts with real analysis results
+        if (results.detailed_results.coherence) {
+            updateCoherenceChart(results.detailed_results.coherence);
+        }
+        
+        if (results.detailed_results.phase_analysis) {
+            updatePhaseChart(results.detailed_results.phase_analysis);
+        }
+        
+        if (results.detailed_results.component_analysis) {
+            updatePCAChart(results.detailed_results.component_analysis);
+        }
+        
+        if (results.detailed_results.bayesian) {
+            updateBayesianCharts(results.detailed_results.bayesian);
+        }
+    }
+
+    function updateCoherenceChart(coherenceData) {
+        if (coherenceData.pairwise_coherence) {
+            const datasets = Object.entries(coherenceData.pairwise_coherence).map(([pair, data], index) => ({
+                label: pair,
+                data: data.frequencies.map((freq, i) => ({
+                    x: freq,
+                    y: data.full_coherence[i]
+                })),
+                borderColor: `hsl(${index * 60}, 70%, 50%)`,
+                backgroundColor: `hsla(${index * 60}, 70%, 50%, 0.1)`,
+                showLine: true
+            }));
+            
+            coherenceMatrixChart.data.datasets = datasets;
+            coherenceMatrixChart.update();
+        }
+    }
+
+    function updatePhaseChart(phaseData) {
+        if (phaseData.phase_diff_series) {
+            const data = phaseData.phase_diff_series.map((phase, i) => Math.abs(phase));
+            phasePolarChart.data = {
+                labels: data.map((_, i) => `Sample ${i}`),
+                datasets: [{
+                    data: data,
+                    backgroundColor: data.map((_, i) => `hsla(${i * 10}, 70%, 50%, 0.7)`)
+                }]
+            };
+            phasePolarChart.update();
+        }
+    }
+
+    function updatePCAChart(componentData) {
+        if (componentData.explained_variance_ratio) {
+            pcaChart.data = {
+                labels: componentData.explained_variance_ratio.map((_, i) => `PC${i+1}`),
+                datasets: [{
+                    label: 'Variance Explained',
+                    data: componentData.explained_variance_ratio,
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            };
+            pcaChart.update();
+        }
+    }
+
+    function updateBayesianCharts(bayesianData) {
+        // Update model probabilities
+        if (bayesianData.model_probabilities) {
+            const models = Object.keys(bayesianData.model_probabilities);
+            const probs = Object.values(bayesianData.model_probabilities);
+            
+            modelProbChart.data = {
+                labels: models,
+                datasets: [{
+                    data: probs,
+                    backgroundColor: ['rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)']
+                }]
+            };
+            modelProbChart.update();
+        }
+        
+        // Update Bayes factor evolution (placeholder)
+        bayesFactorChart.data = {
+            labels: Array.from({length: 10}, (_, i) => i),
+            datasets: [{
+                label: 'Log Bayes Factor',
+                data: Array.from({length: 10}, () => Math.log(bayesianData.bayes_factor || 1)),
+                borderColor: 'rgba(75, 192, 192, 1)',
+                fill: false
+            }]
+        };
+        bayesFactorChart.update();
+    }
+
+    function updateAnalysisSummary(results) {
+        const summary = `
+            <h6>Analysis Results</h6>
+            <ul class="list-unstyled">
+                <li><strong>GTI Value:</strong> ${results.gti_value.toFixed(6)}</li>
+                <li><strong>Alert Level:</strong> 
+                    <span class="badge bg-${getAlertColor(results.alert_level)}">${results.alert_level}</span>
+                </li>
+                <li><strong>Phase Gap:</strong> ${results.phase_gap_degrees.toFixed(2)}°</li>
+                <li><strong>Coherence:</strong> ${results.coherence_median.toFixed(4)}</li>
+                <li><strong>Variance Explained:</strong> ${(results.variance_explained * 100).toFixed(1)}%</li>
+                <li><strong>Bayes Factor:</strong> ${results.bayes_factor.toFixed(2)}</li>
+            </ul>
+            <small class="text-muted">Analysis completed at ${new Date().toLocaleTimeString()}</small>
+        `;
+        
+        document.getElementById('analysis-summary').innerHTML = summary;
+    }
+
+    function showAnalysisError(message) {
+        document.getElementById('analysis-summary').innerHTML = `
+            <div class="text-center text-danger">
+                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                <p>Analysis Error</p>
+                <small>${message}</small>
+            </div>
+        `;
+    }
+
+    function getAlertColor(level) {
+        switch(level) {
+            case 'CRITICAL': return 'danger';
+            case 'HIGH': return 'warning';
+            case 'MEDIUM': return 'info';
+            case 'LOW': return 'success';
+            default: return 'secondary';
+        }
+    }
+
+    function exportAnalysis() {
+        // Implement analysis export functionality
+        alert('Export functionality would be implemented here');
+    }
+
+    function generateReport() {
+        // Implement report generation
+        alert('Report generation would be implemented here');
+    }
+
+    function viewAnalysisDetails(resultId) {
+        // Implement detailed view for analysis results
+        alert(`View details for analysis result ${resultId}`);
+    }
+</script>
+{% endblock %}

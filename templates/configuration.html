@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration - Temporal Monitoring{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-cog me-2"></i>Processing Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="config-form">
+                    <div class="row">
+                        <!-- Multitaper Parameters -->
+                        <div class="col-lg-6 mb-4">
+                            <h6 class="border-bottom pb-2">
+                                <i class="fas fa-wave-square me-1"></i>Multitaper Analysis
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="multitaper_bandwidth" class="form-label">Time-Bandwidth Product (NW)</label>
+                                <input type="number" class="form-control" id="multitaper_bandwidth" 
+                                       value="4.0" step="0.1" min="1" max="10">
+                                <div class="form-text">Controls frequency resolution vs. variance trade-off</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="multitaper_samples" class="form-label">Number of Tapers (K)</label>
+                                <input type="number" class="form-control" id="multitaper_samples" 
+                                       value="7" min="1" max="20">
+                                <div class="form-text">Number of orthogonal tapers for spectral estimation</div>
+                            </div>
+                        </div>
+
+                        <!-- Coherence Parameters -->
+                        <div class="col-lg-6 mb-4">
+                            <h6 class="border-bottom pb-2">
+                                <i class="fas fa-signal me-1"></i>Coherence Analysis
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="coherence_threshold" class="form-label">Coherence Threshold</label>
+                                <input type="number" class="form-control" id="coherence_threshold" 
+                                       value="0.1" step="0.01" min="0" max="1">
+                                <div class="form-text">Minimum coherence for signal detection</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="phase_smoothing_window" class="form-label">Phase Smoothing Window</label>
+                                <input type="number" class="form-control" id="phase_smoothing_window" 
+                                       value="50" min="3" max="200">
+                                <div class="form-text">Window size for phase gap smoothing</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Bayesian Parameters -->
+                        <div class="col-lg-6 mb-4">
+                            <h6 class="border-bottom pb-2">
+                                <i class="fas fa-chart-bar me-1"></i>Bayesian Analysis
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="bayes_factor_threshold" class="form-label">Bayes Factor Threshold</label>
+                                <input type="number" class="form-control" id="bayes_factor_threshold" 
+                                       value="10.0" step="1" min="1" max="100">
+                                <div class="form-text">Minimum log(BF) for decisive evidence</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="prior_strength" class="form-label">Prior Strength</label>
+                                <input type="number" class="form-control" id="prior_strength" 
+                                       value="1.0" step="0.1" min="0.1" max="10">
+                                <div class="form-text">Strength of prior beliefs in model selection</div>
+                            </div>
+                        </div>
+
+                        <!-- GTI Alert Thresholds -->
+                        <div class="col-lg-6 mb-4">
+                            <h6 class="border-bottom pb-2">
+                                <i class="fas fa-exclamation-triangle me-1"></i>GTI Alert Thresholds
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="gti_critical" class="form-label">Critical Level</label>
+                                <input type="number" class="form-control" id="gti_critical" 
+                                       value="0.2" step="0.01" min="0" max="1">
+                                <div class="form-text text-danger">Highest alert level</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="gti_high" class="form-label">High Level</label>
+                                <input type="number" class="form-control" id="gti_high" 
+                                       value="0.1" step="0.01" min="0" max="1">
+                                <div class="form-text text-warning">High concern level</div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label for="gti_medium" class="form-label">Medium Level</label>
+                                        <input type="number" class="form-control" id="gti_medium" 
+                                               value="0.05" step="0.01" min="0" max="1">
+                                        <div class="form-text text-info">Medium concern</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label for="gti_low" class="form-label">Low Level</label>
+                                        <input type="number" class="form-control" id="gti_low" 
+                                               value="0.01" step="0.01" min="0" max="1">
+                                        <div class="form-text text-success">Low concern</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <button type="button" class="btn btn-primary" onclick="saveConfiguration()">
+                                        <i class="fas fa-save me-1"></i>Save Configuration
+                                    </button>
+                                    <button type="button" class="btn btn-secondary ms-2" onclick="loadConfiguration()">
+                                        <i class="fas fa-undo me-1"></i>Reset to Defaults
+                                    </button>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-success" onclick="validateConfiguration()">
+                                        <i class="fas fa-check me-1"></i>Validate Settings
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Configuration Status -->
+<div class="row mt-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-history me-1"></i>Recent Configuration Changes
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="config-history">
+                    {% for name, config in configurations.items() %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <strong>{{ name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ config.description or 'No description' }}</small>
+                            </div>
+                            <div class="text-end">
+                                <code>{{ config.get_value() }}</code>
+                                <br>
+                                <small class="text-muted">{{ config.updated_at.strftime('%m/%d %H:%M') }}</small>
+                            </div>
+                        </div>
+                        {% if not loop.last %}<hr class="my-2">{% endif %}
+                    {% endfor %}
+                    
+                    {% if not configurations %}
+                        <p class="text-muted mb-0">No configuration changes recorded.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle me-1"></i>Configuration Guidelines
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="guidelines-accordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#multitaper-guide">
+                                Multitaper Settings
+                            </button>
+                        </h2>
+                        <div id="multitaper-guide" class="accordion-collapse collapse">
+                            <div class="accordion-body">
+                                <ul class="mb-0">
+                                    <li><strong>NW = 4:</strong> Good balance for most applications</li>
+                                    <li><strong>K = 2*NW - 1:</strong> Maximum number of reliable tapers</li>
+                                    <li><strong>Higher NW:</strong> Better frequency resolution, more variance</li>
+                                    <li><strong>Lower NW:</strong> Less resolution, lower variance</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#coherence-guide">
+                                Coherence Analysis
+                            </button>
+                        </h2>
+                        <div id="coherence-guide" class="accordion-collapse collapse">
+                            <div class="accordion-body">
+                                <ul class="mb-0">
+                                    <li><strong>Threshold 0.1:</strong> Moderate coherence requirement</li>
+                                    <li><strong>Smoothing 50:</strong> Balances noise vs. responsiveness</li>
+                                    <li><strong>Lower threshold:</strong> More sensitive, more false positives</li>
+                                    <li><strong>Higher threshold:</strong> Less sensitive, fewer detections</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#gti-guide">
+                                GTI Thresholds
+                            </button>
+                        </h2>
+                        <div id="gti-guide" class="accordion-collapse collapse">
+                            <div class="accordion-body">
+                                <ul class="mb-0">
+                                    <li><strong>Critical ≥ 0.2:</strong> Immediate attention required</li>
+                                    <li><strong>High ≥ 0.1:</strong> Elevated monitoring needed</li>
+                                    <li><strong>Medium ≥ 0.05:</strong> Watch for trends</li>
+                                    <li><strong>Low ≥ 0.01:</strong> Background monitoring</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function saveConfiguration() {
+        const config = {
+            multitaper_bandwidth: parseFloat(document.getElementById('multitaper_bandwidth').value),
+            multitaper_samples: parseInt(document.getElementById('multitaper_samples').value),
+            coherence_threshold: parseFloat(document.getElementById('coherence_threshold').value),
+            phase_smoothing_window: parseInt(document.getElementById('phase_smoothing_window').value),
+            bayes_factor_threshold: parseFloat(document.getElementById('bayes_factor_threshold').value),
+            prior_strength: parseFloat(document.getElementById('prior_strength').value),
+            gti_thresholds: {
+                critical: parseFloat(document.getElementById('gti_critical').value),
+                high: parseFloat(document.getElementById('gti_high').value),
+                medium: parseFloat(document.getElementById('gti_medium').value),
+                low: parseFloat(document.getElementById('gti_low').value)
+            }
+        };
+
+        // Save each configuration parameter
+        const savePromises = Object.entries(config).map(([key, value]) => {
+            return fetch('/api/update_configuration', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    parameter_name: key,
+                    parameter_value: value
+                })
+            });
+        });
+
+        Promise.all(savePromises)
+            .then(responses => {
+                if (responses.every(r => r.ok)) {
+                    showAlert('Configuration saved successfully!', 'success');
+                } else {
+                    showAlert('Some configuration parameters failed to save.', 'warning');
+                }
+            })
+            .catch(error => {
+                showAlert('Error saving configuration: ' + error.message, 'danger');
+            });
+    }
+
+    function loadConfiguration() {
+        // Reset to default values
+        document.getElementById('multitaper_bandwidth').value = 4.0;
+        document.getElementById('multitaper_samples').value = 7;
+        document.getElementById('coherence_threshold').value = 0.1;
+        document.getElementById('phase_smoothing_window').value = 50;
+        document.getElementById('bayes_factor_threshold').value = 10.0;
+        document.getElementById('prior_strength').value = 1.0;
+        document.getElementById('gti_critical').value = 0.2;
+        document.getElementById('gti_high').value = 0.1;
+        document.getElementById('gti_medium').value = 0.05;
+        document.getElementById('gti_low').value = 0.01;
+        
+        showAlert('Configuration reset to defaults.', 'info');
+    }
+
+    function validateConfiguration() {
+        const errors = [];
+        
+        // Validate multitaper parameters
+        const nw = parseFloat(document.getElementById('multitaper_bandwidth').value);
+        const k = parseInt(document.getElementById('multitaper_samples').value);
+        
+        if (k >= 2 * nw) {
+            errors.push('Number of tapers (K) should be less than 2*NW for reliability.');
+        }
+        
+        // Validate threshold ordering
+        const thresholds = [
+            parseFloat(document.getElementById('gti_low').value),
+            parseFloat(document.getElementById('gti_medium').value),
+            parseFloat(document.getElementById('gti_high').value),
+            parseFloat(document.getElementById('gti_critical').value)
+        ];
+        
+        for (let i = 1; i < thresholds.length; i++) {
+            if (thresholds[i] <= thresholds[i-1]) {
+                errors.push('GTI thresholds must be in ascending order: Low < Medium < High < Critical');
+                break;
+            }
+        }
+        
+        if (errors.length === 0) {
+            showAlert('Configuration validation passed!', 'success');
+        } else {
+            showAlert('Validation errors: ' + errors.join(' '), 'danger');
+        }
+    }
+
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const container = document.querySelector('.container-fluid');
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+</script>
+{% endblock %}
