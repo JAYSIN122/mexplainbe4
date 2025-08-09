@@ -5,8 +5,19 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-# Set up logging for debugging
-logging.basicConfig(level=logging.DEBUG)
+# Set up logging for debugging and file output
+import os
+os.makedirs('logs', exist_ok=True)
+
+# Configure logging to both file and console
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s:%(name)s:%(message)s',
+    handlers=[
+        logging.FileHandler('logs/app.log'),
+        logging.StreamHandler()
+    ]
+)
 
 class Base(DeclarativeBase):
     pass

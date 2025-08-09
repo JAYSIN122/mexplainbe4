@@ -11,10 +11,28 @@ from signal_processing import SignalProcessor
 from bayesian_analysis import BayesianAnalyzer
 import json
 import logging
+import subprocess
+import traceback
+import hashlib
+import socket
+import time
+import os
 from datetime import datetime, timedelta
 import numpy as np
+import requests
 
 logger = logging.getLogger(__name__)
+
+# Global exception storage
+_last_exception_text = None
+
+# Allowed hosts for /api/ping
+ALLOWED_HOSTS = [
+    'webtai.bipm.org',
+    'datacenter.iers.org',
+    'hpiers.obspm.fr',
+    'tai.bipm.org'
+]
 
 
 def make_serializable(obj):
@@ -480,6 +498,320 @@ def api_system_status():
             'success': False,
             'message': f'Failed to get system status: {str(e)}'
         }), 500
+
+@app.route('/proof')
+def proof_page():
+    """Serve the proof page"""
+    return render_template('proof.html')
+
+@app.route('/api/provenance')
+def api_provenance():
+    """Return last N lines from provenance.jsonl"""
+    try:
+        n = request.args.get('n', 50, type=int)
+        provenance_file = 'data/_meta/provenance.jsonl'
+        
+        if not os.path.exists(provenance_file):
+            return jsonify({
+                'success': True,
+                'records': [],
+                'message': 'No provenance data yet'
+            })
+        
+        # Read last N lines
+        with open(provenance_file, 'r') as f:
+            lines = f.readlines()
+        
+        # Get last N lines and parse JSON
+        last_lines = lines[-n:] if len(lines) > n else lines
+        records = []
+        for line in last_lines:
+            try:
+                records.append(json.loads(line.strip()))
+            except json.JSONDecodeError:
+                continue
+        
+        return jsonify({
+            'success': True,
+            'records': records,
+            'total_records': len(lines)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in provenance API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Failed to get provenance: {str(e)}'
+        }), 500
+
+@app.route('/api/ping')
+def api_ping():
+    """Ping allowed hosts and return connection info"""
+    try:
+        url = request.args.get('url')
+        if not url:
+            return jsonify({
+                'success': False,
+                'message': 'URL parameter required'
+            }), 400
+        
+        # Parse hostname and check against allowlist
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        
+        if hostname not in ALLOWED_HOSTS:
+            return jsonify({
+                'success': False,
+                'message': f'Host {hostname} not in allowlist'
+            }), 400
+        
+        # Resolve IP
+        try:
+            resolved_ip = socket.gethostbyname(hostname)
+        except socket.gaierror:
+            resolved_ip = None
+        
+        # Try HEAD first, fallback to GET
+        start_time = time.time()
+        try:
+            response = requests.head(url, timeout=10)
+            if response.status_code == 405:  # Method not allowed
+                response = requests.get(url, timeout=10, stream=True)
+        except:
+            response = requests.get(url, timeout=10, stream=True)
+        
+        elapsed_ms = (time.time() - start_time) * 1000
+        
+        # Extract relevant headers
+        headers = {
+            'Date': response.headers.get('Date'),
+            'Server': response.headers.get('Server'),
+            'Content-Type': response.headers.get('Content-Type'),
+            'Content-Length': response.headers.get('Content-Length'),
+            'Last-Modified': response.headers.get('Last-Modified')
+        }
+        
+        return jsonify({
+            'success': True,
+            'status_code': response.status_code,
+            'elapsed_ms': elapsed_ms,
+            'resolved_ip': resolved_ip,
+            'headers': headers,
+            'url': url
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Ping failed: {str(e)}',
+            'elapsed_ms': (time.time() - start_time) * 1000 if 'start_time' in locals() else None
+        }), 500
+
+@app.route('/api/last_trace')
+def api_last_trace():
+    """Return last captured Python traceback"""
+    global _last_exception_text
+    return jsonify({
+        'success': True,
+        'last_exception': _last_exception_text,
+        'timestamp': datetime.utcnow().isoformat()
+    })
+
+@app.route('/api/logs')
+def api_logs():
+    """Return last K lines of application logs"""
+    try:
+        k = request.args.get('k', 200, type=int)
+        log_file = 'logs/app.log'
+        
+        if not os.path.exists(log_file):
+            return jsonify({
+                'success': True,
+                'logs': [],
+                'message': 'No log file found'
+            })
+        
+        # Read last K lines
+        with open(log_file, 'r') as f:
+            lines = f.readlines()
+        
+        last_lines = lines[-k:] if len(lines) > k else lines
+        
+        return jsonify({
+            'success': True,
+            'logs': [line.strip() for line in last_lines],
+            'total_lines': len(lines)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Failed to get logs: {str(e)}'
+        }), 500
+
+@app.route('/api/raw')
+def api_raw():
+    """Serve files from data/ directory with path checking"""
+    try:
+        path = request.args.get('path')
+        if not path:
+            return jsonify({
+                'success': False,
+                'message': 'Path parameter required'
+            }), 400
+        
+        # Security: ensure path is under data/
+        if not path.startswith('data/'):
+            return jsonify({
+                'success': False,
+                'message': 'Access denied: path must be under data/'
+            }), 403
+        
+        # Security: prevent directory traversal
+        if '..' in path or path.startswith('/'):
+            return jsonify({
+                'success': False,
+                'message': 'Access denied: invalid path'
+            }), 403
+        
+        if not os.path.exists(path):
+            return jsonify({
+                'success': False,
+                'message': 'File not found'
+            }), 404
+        
+        # Serve file content
+        with open(path, 'rb') as f:
+            content = f.read()
+        
+        # Try to determine if it's text
+        try:
+            text_content = content.decode('utf-8')
+            return jsonify({
+                'success': True,
+                'content': text_content,
+                'size': len(content),
+                'path': path
+            })
+        except UnicodeDecodeError:
+            # Binary file - return base64
+            import base64
+            return jsonify({
+                'success': True,
+                'content': base64.b64encode(content).decode('ascii'),
+                'encoding': 'base64',
+                'size': len(content),
+                'path': path
+            })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Failed to serve file: {str(e)}'
+        }), 500
+
+@app.route('/api/pull', methods=['GET', 'POST'])
+def api_pull():
+    """Trigger ETL data pull via subprocess"""
+    try:
+        # Run the ETL script
+        result = subprocess.run(
+            ['python', 'etl/fetch_all.py'],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode == 0:
+            # Parse any JSON output or just return success
+            return jsonify({
+                'ok': True,
+                'result': {
+                    'pulled': ['BIPM', 'IERS'],
+                    'stdout': result.stdout,
+                    'exit_code': result.returncode
+                }
+            })
+        else:
+            return jsonify({
+                'ok': False,
+                'error': result.stderr,
+                'stdout': result.stdout,
+                'exit_code': result.returncode
+            }), 500
+        
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'ok': False,
+            'error': 'ETL process timed out'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'ok': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/forecast_history')
+def api_forecast_history():
+    """Get historical forecast data"""
+    try:
+        # Get recent GTI calculations for historical analysis
+        recent_gtis = GTICalculation.query.order_by(GTICalculation.timestamp.desc()).limit(100).all()
+        
+        if len(recent_gtis) < 10:
+            return jsonify({
+                'success': False,
+                'message': 'Insufficient historical data'
+            }), 400
+        
+        # Format historical data
+        history = []
+        for gti in reversed(recent_gtis):
+            history.append({
+                'timestamp': gti.timestamp.isoformat(),
+                'gti_value': gti.gti_value,
+                'phase_gap': gti.phase_gap,
+                'coherence': gti.coherence_median,
+                'alert_level': gti.alert_level
+            })
+        
+        return jsonify({
+            'success': True,
+            'history': history,
+            'summary': {
+                'total_points': len(history),
+                'avg_gti': sum(h['gti_value'] for h in history) / len(history),
+                'latest_gti': history[-1]['gti_value'] if history else 0
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in forecast history API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Forecast history failed: {str(e)}'
+        }), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Global exception handler to capture tracebacks"""
+    global _last_exception_text
+    _last_exception_text = traceback.format_exc()
+    logger.error(f"Unhandled exception: {_last_exception_text}")
+    
+    if hasattr(e, 'code') and e.code == 404:
+        return render_template('dashboard.html', 
+                             latest_gti=None,
+                             recent_gtis=[],
+                             stream_status={}), 404
+    
+    db.session.rollback()
+    return jsonify({
+        'success': False,
+        'message': 'Internal server error',
+        'error': str(e)
+    }), 500
 
 @app.errorhandler(404)
 def not_found_error(error):
