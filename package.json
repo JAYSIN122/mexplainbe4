@@ -1,0 +1,12 @@
+
+{
+  "name": "temporal-monitoring-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "echo 'Frontend development server'",
+    "typecheck": "pyright",
+    "lint": "echo 'Linting placeholder'"
+  },
+  "devDependencies": {},
+  "dependencies": {}
+}
