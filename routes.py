@@ -371,6 +371,61 @@ def api_update_configuration():
             'message': f'Failed to update configuration: {str(e)}'
         }), 500
 
+@app.route('/api/forecast')
+def api_forecast():
+    """API endpoint to get GTI forecast/prediction"""
+    try:
+        # Get recent GTI calculations for trend analysis
+        recent_gtis = GTICalculation.query.order_by(GTICalculation.timestamp.desc()).limit(50).all()
+        
+        if len(recent_gtis) < 5:
+            return jsonify({
+                'success': False,
+                'message': 'Insufficient data for forecasting'
+            }), 400
+        
+        # Simple trend analysis - calculate rate of change
+        values = [g.gti_value for g in reversed(recent_gtis)]
+        timestamps = [g.timestamp.timestamp() for g in reversed(recent_gtis)]
+        
+        # Linear trend calculation
+        if len(values) >= 2:
+            time_diff = timestamps[-1] - timestamps[0]
+            value_diff = values[-1] - values[0]
+            trend_rate = value_diff / time_diff if time_diff > 0 else 0
+            
+            # Project 1 hour ahead
+            forecast_time = timestamps[-1] + 3600  # 1 hour
+            forecast_value = values[-1] + (trend_rate * 3600)
+            
+            forecast_data = {
+                'current_value': values[-1],
+                'forecast_value': forecast_value,
+                'forecast_time': datetime.fromtimestamp(forecast_time).isoformat(),
+                'trend_rate': trend_rate,
+                'confidence': 'Low' if len(values) < 10 else 'Medium'
+            }
+        else:
+            forecast_data = {
+                'current_value': values[-1] if values else 0,
+                'forecast_value': None,
+                'forecast_time': None,
+                'trend_rate': 0,
+                'confidence': 'None'
+            }
+        
+        return jsonify({
+            'success': True,
+            'forecast': forecast_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in forecast API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Forecast failed: {str(e)}'
+        }), 500
+
 @app.route('/api/system_status')
 def api_system_status():
     """API endpoint to get overall system status"""
@@ -428,9 +483,15 @@ def api_system_status():
 
 @app.errorhandler(404)
 def not_found_error(error):
-    return render_template('dashboard.html'), 404
+    return render_template('dashboard.html', 
+                         latest_gti=None,
+                         recent_gtis=[],
+                         stream_status={}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
     db.session.rollback()
-    return render_template('dashboard.html'), 500
+    return render_template('dashboard.html',
+                         latest_gti=None,
+                         recent_gtis=[],
+                         stream_status={}), 500
