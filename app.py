@@ -6,7 +6,6 @@ from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Set up logging for debugging and file output
-import os
 os.makedirs('logs', exist_ok=True)
 
 # Configure logging to both file and console
@@ -44,5 +43,5 @@ with app.app_context():
     import models  # noqa: F401
     # Import routes to register them
     import routes  # noqa: F401
-    
+
     db.create_all()
