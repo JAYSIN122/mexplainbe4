@@ -20,8 +20,66 @@ import os
 from datetime import datetime, timedelta
 import numpy as np
 import requests
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+def _load_phase_history():
+    p = Path("artifacts/phase_gap_history.json")
+    if not p.exists():
+        return []
+    try:
+        obj = json.loads(p.read_text())
+        H = obj.get("history", [])
+        out = []
+        for h in H:
+            ts = h.get("as_of_utc")
+            val = h.get("phase_deg")
+            if ts is None or val is None:
+                continue
+            try:
+                t = datetime.fromisoformat(ts.replace("Z","+00:00"))
+            except Exception:
+                continue
+            out.append((t, float(val)))
+        out.sort(key=lambda x: x[0])
+        return out
+    except Exception:
+        return []
+
+def _unwrap_deg_to_rad(deg_series):
+    rad = np.deg2rad(np.array(deg_series, dtype=float))
+    return np.unwrap(rad)
+
+def _robust_fit_eta(t_list, phase_rad, min_days=150, max_days=300):
+    if len(t_list) < 20:
+        return None
+    t_end = t_list[-1]
+    t_start = t_end - timedelta(days=max_days)
+    idx = [i for i, t in enumerate(t_list) if t >= t_start]
+    if len(idx) < 20:
+        idx = list(range(max(0, len(t_list)-200), len(t_list)))
+    t_sel = [t_list[i] for i in idx]
+    y = phase_rad[idx]
+    t0 = t_sel[0]
+    x = np.array([(t - t0).total_seconds() / 86400.0 for t in t_sel], dtype=float)
+    for _ in range(2):
+        coeffs = np.polyfit(x, y, 1)
+        m, b = coeffs[0], coeffs[1]
+        yhat = m*x + b
+        resid = y - yhat
+        q1, q3 = np.percentile(resid, [5, 95])
+        keep = (resid >= q1) & (resid <= q3)
+        x, y = x[keep], y[keep]
+        if len(x) < 10:
+            break
+    coeffs = np.polyfit(x, y, 1)
+    m, b = coeffs[0], coeffs[1]
+    phi_now = float(y[-1])
+    if m >= 0:
+        return None
+    eta_days = abs(phi_now) / (-m)
+    return {"eta_days": float(eta_days)}
 
 # Global exception storage
 _last_exception_text = None
@@ -792,6 +850,31 @@ def api_forecast_history():
             'success': False,
             'message': f'Forecast history failed: {str(e)}'
         }), 500
+
+@app.route("/api/eta", methods=["GET"])
+def api_eta():
+    H = _load_phase_history()
+    if not H:
+        return jsonify({"ok": False, "error": "No phase history available"}), 200
+    t_list = [h[0] for h in H]
+    deg_list = [h[1] for h in H]
+    phase_rad = _unwrap_deg_to_rad(deg_list)
+    res = _robust_fit_eta(t_list, phase_rad)
+    asof = datetime.now(timezone.utc)
+    if not res:
+        return jsonify({
+            "ok": True,
+            "as_of_utc": asof.isoformat().replace("+00:00","Z"),
+            "message": "No convergence or insufficient data"
+        }), 200
+    eta_days = res["eta_days"]
+    eta_date = (asof + timedelta(days=eta_days)).date().isoformat()
+    return jsonify({
+        "ok": True,
+        "as_of_utc": asof.isoformat().replace("+00:00","Z"),
+        "eta_days": eta_days,
+        "eta_date_utc": eta_date
+    }), 200
 
 @app.errorhandler(Exception)
 def handle_exception(e):
