@@ -1,0 +1,98 @@
+1. Fix naming mismatch in _ingest_tai_data
+Right now you call _parse_bimp_data() but your parser is defined as _parse_bipm_data() — that will raise an AttributeError.
+
+Change:
+
+python
+Copy
+Edit
+return self._parse_bimp_data(bipm_file)
+to:
+
+python
+Copy
+Edit
+return self._parse_bipm_data(bipm_file)
+2. Ensure consistent file paths
+If you’re going to keep the “data/” directory structure:
+
+TAI → data/bipm/utcrlab.all (you wrote data/bimp by mistake)
+
+GNSS → data/gnss/clock_data.csv
+
+VLBI → data/vlbi/delays.csv
+
+PTA → data/pta/residuals.csv
+
+Correct the typo in the TAI path:
+
+python
+Copy
+Edit
+bipm_file = "data/bipm/utcrlab.all"
+3. Add schema validation for CSV
+If those CSVs are coming from real products, it’s good to check column count before reading:
+
+python
+Copy
+Edit
+def _load_csv_data(self, filepath):
+    """Load data from CSV files (timestamp,value)"""
+    try:
+        data = np.loadtxt(filepath, delimiter=',')
+        if data.ndim == 1 and data.size >= 2:
+            return [(float(data[0]), float(data[1]))]
+        elif data.ndim == 2 and data.shape[1] >= 2:
+            return [(float(row[0]), float(row[1])) for row in data]
+        else:
+            logger.warning(f"CSV file {filepath} has unexpected format")
+            return []
+    except Exception as e:
+        logger.error(f"Error loading CSV data from {filepath}: {str(e)}")
+        return []
+4. Make ingestion fail loud if all sources are empty
+Right now ingest_all_streams() will just return {} with warnings if all files are missing.
+For auditing, you might want a hard fail in that case:
+
+python
+Copy
+Edit
+def ingest_all_streams(self):
+    """Ingest data from all available sources"""
+    stream_data = {}
+
+    for stream_type, ingest_func in self.data_sources.items():
+        try:
+            data = ingest_func()
+            if data:
+                stream_data[stream_type] = data
+                logger.info(f"Successfully ingested {len(data)} points from {stream_type}")
+            else:
+                logger.warning(f"No data available for {stream_type}")
+        except Exception as e:
+            logger.error(f"Error ingesting {stream_type} data: {str(e)}")
+
+    if not stream_data:
+        raise RuntimeError("No data ingested from any source (all files missing or empty).")
+
+    return stream_data
+5. Integration with DB
+Once the above is solid, you can push ingested data straight to the Neon schema we built earlier:
+
+python
+Copy
+Edit
+def save_to_db(self, source_name, key, unit, data_points):
+    import psycopg2
+    from psycopg2.extras import execute_values
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM sources WHERE name = %s", (source_name,))
+            source_id = cur.fetchone()[0]
+            rows = [(source_id, datetime.utcfromtimestamp(ts), key, val, unit, {}) for ts, val in data_points]
+            execute_values(cur, """
+                INSERT INTO measurements (source_id, observed_at, key, value, unit, meta)
+                VALUES %s
+                ON CONFLICT DO NOTHING
+            """, rows)
