@@ -188,16 +188,27 @@ def dashboard():
 def configuration():
     """Configuration management view"""
     try:
+        # Check if user is authenticated via Repl Auth headers
+        user_id = request.headers.get('X-Replit-User-Id')
+        user_name = request.headers.get('X-Replit-User-Name')
+        is_authenticated = bool(user_id)
+
         # Get all configuration parameters
         configs = ProcessingConfiguration.query.all()
         config_dict = {config.parameter_name: config for config in configs}
 
-        return render_template('configuration.html', configurations=config_dict)
+        return render_template('configuration.html', 
+                             configurations=config_dict,
+                             is_authenticated=is_authenticated,
+                             user_name=user_name)
 
     except Exception as e:
         logger.error(f"Error rendering configuration: {str(e)}")
         flash(f"Error loading configuration: {str(e)}", 'error')
-        return render_template('configuration.html', configurations={})
+        return render_template('configuration.html', 
+                             configurations={},
+                             is_authenticated=False,
+                             user_name=None)
 
 @app.route('/analysis')
 def analysis():
@@ -421,6 +432,14 @@ def api_stream_data(stream_type):
 def api_update_configuration():
     """API endpoint to update configuration parameters"""
     try:
+        # Check authentication
+        user_id = request.headers.get('X-Replit-User-Id')
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'message': 'Authentication required to modify configuration'
+            }), 401
+
         data = request.get_json()
 
         if not data or 'parameter_name' not in data or 'parameter_value' not in data:
