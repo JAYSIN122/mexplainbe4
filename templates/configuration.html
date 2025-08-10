@@ -108,6 +108,56 @@
                             </div>
                         </div>
 
+                        <!-- Mesh Monitor Configuration -->
+                        <div class="col-lg-6 mb-4">
+                            <h6 class="border-bottom pb-2">
+                                <i class="fas fa-network-wired me-1"></i>Mesh Monitor
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="use_mesh_monitor" checked>
+                                    <label class="form-check-label" for="use_mesh_monitor">
+                                        Enable Mesh Network Monitoring
+                                    </label>
+                                </div>
+                                <div class="form-text">
+                                    <strong>Description:</strong> Enable decentralized timing anomaly detection via NTP peer monitoring. 
+                                    When enabled, the system will poll configured NTP peers to detect global timing synchronization issues. 
+                                    This provides an independent check on timing stability separate from the main GTI pipeline. 
+                                    Mesh monitoring can help distinguish between astrophysical anomalies and global synchrony events.
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3" id="mesh_peers_config">
+                                <label for="mesh_peers" class="form-label">NTP Peers</label>
+                                <textarea class="form-control" id="mesh_peers" rows="3" 
+                                          placeholder="pool.ntp.org&#10;time.nist.gov&#10;time.google.com">pool.ntp.org
+time.nist.gov
+time.google.com
+ptbtime1.ptb.de</textarea>
+                                <div class="form-text">
+                                    <strong>Description:</strong> List of NTP server hostnames or IP addresses to monitor (one per line). 
+                                    More peers provide better redundancy and accuracy but increase network overhead. 
+                                    Recommended: 4-8 geographically distributed, high-quality time servers from national labs or major providers.
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3" id="mesh_interval_config">
+                                <label for="mesh_interval" class="form-label">Polling Interval (seconds)</label>
+                                <input type="number" class="form-control" id="mesh_interval" 
+                                       value="60" min="10" max="3600">
+                                <div class="form-text">
+                                    <strong>Description:</strong> Time interval between NTP peer polling cycles. 
+                                    Shorter intervals (10-30s) provide faster anomaly detection but increase network load. 
+                                    Longer intervals (300-3600s) reduce overhead but may miss transient events. 
+                                    Standard value 60s balances responsiveness with resource usage.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
                         <!-- GTI Alert Thresholds -->
                         <div class="col-lg-6 mb-4">
                             <h6 class="border-bottom pb-2">
@@ -312,6 +362,9 @@
             phase_smoothing_window: parseInt(document.getElementById('phase_smoothing_window').value),
             bayes_factor_threshold: parseFloat(document.getElementById('bayes_factor_threshold').value),
             prior_strength: parseFloat(document.getElementById('prior_strength').value),
+            use_mesh_monitor: document.getElementById('use_mesh_monitor').checked,
+            mesh_peers: document.getElementById('mesh_peers').value.split('\n').filter(peer => peer.trim()),
+            mesh_interval: parseInt(document.getElementById('mesh_interval').value),
             gti_thresholds: {
                 critical: parseFloat(document.getElementById('gti_critical').value),
                 high: parseFloat(document.getElementById('gti_high').value),
@@ -355,11 +408,15 @@
         document.getElementById('phase_smoothing_window').value = 50;
         document.getElementById('bayes_factor_threshold').value = 10.0;
         document.getElementById('prior_strength').value = 1.0;
+        document.getElementById('use_mesh_monitor').checked = true;
+        document.getElementById('mesh_peers').value = 'pool.ntp.org\ntime.nist.gov\ntime.google.com\nptbtime1.ptb.de';
+        document.getElementById('mesh_interval').value = 60;
         document.getElementById('gti_critical').value = 0.2;
         document.getElementById('gti_high').value = 0.1;
         document.getElementById('gti_medium').value = 0.05;
         document.getElementById('gti_low').value = 0.01;
         
+        toggleMeshConfig();
         showAlert('Configuration reset to defaults.', 'info');
     }
 
@@ -372,6 +429,19 @@
         
         if (k >= 2 * nw) {
             errors.push('Number of tapers (K) should be less than 2*NW for reliability.');
+        }
+        
+        // Validate mesh monitor settings
+        if (document.getElementById('use_mesh_monitor').checked) {
+            const peers = document.getElementById('mesh_peers').value.split('\n').filter(peer => peer.trim());
+            if (peers.length < 2) {
+                errors.push('At least 2 NTP peers are recommended for reliable mesh monitoring.');
+            }
+            
+            const interval = parseInt(document.getElementById('mesh_interval').value);
+            if (interval < 10) {
+                errors.push('Mesh polling interval should be at least 10 seconds to avoid overwhelming NTP servers.');
+            }
         }
         
         // Validate threshold ordering
@@ -396,6 +466,15 @@
         }
     }
 
+    function toggleMeshConfig() {
+        const isEnabled = document.getElementById('use_mesh_monitor').checked;
+        const peersConfig = document.getElementById('mesh_peers_config');
+        const intervalConfig = document.getElementById('mesh_interval_config');
+        
+        peersConfig.style.display = isEnabled ? 'block' : 'none';
+        intervalConfig.style.display = isEnabled ? 'block' : 'none';
+    }
+
     function showAlert(message, type) {
         const alertDiv = document.createElement('div');
         alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
@@ -412,5 +491,11 @@
             alertDiv.remove();
         }, 5000);
     }
+
+    // Initialize mesh config toggle on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('use_mesh_monitor').addEventListener('change', toggleMeshConfig);
+        toggleMeshConfig(); // Set initial state
+    });
 </script>
 {% endblock %}

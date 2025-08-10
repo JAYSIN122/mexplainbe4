@@ -18,6 +18,7 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
+logger = logging.getLogger(__name__)
 
 class Base(DeclarativeBase):
     pass
@@ -49,5 +50,25 @@ with app.app_context():
     import models  # noqa: F401
     # Import routes to register them
     import routes  # noqa: F401
-    
+
     db.create_all()
+
+    # Load mesh monitor configuration from database
+    try:
+        from models import ProcessingConfiguration
+        use_mesh_config = ProcessingConfiguration.query.filter_by(parameter_name='use_mesh_monitor').first()
+        if use_mesh_config:
+            app.config['USE_MESH_MONITOR'] = use_mesh_config.get_value()
+
+        mesh_peers_config = ProcessingConfiguration.query.filter_by(parameter_name='mesh_peers').first()
+        if mesh_peers_config:
+            app.config['MESH_PEERS'] = mesh_peers_config.get_value()
+
+        mesh_interval_config = ProcessingConfiguration.query.filter_by(parameter_name='mesh_interval').first()
+        if mesh_interval_config:
+            app.config['MESH_INTERVAL'] = mesh_interval_config.get_value()
+
+    except Exception as e:
+        logger.warning(f"Failed to load mesh monitor configuration: {e}")
+
+    logger.info("Database initialized")
