@@ -43,13 +43,39 @@ class MeshMonitor:
         client = ntplib.NTPClient()
         offsets = []
         
+        # Fallback IP addresses for common NTP servers
+        ip_fallbacks = {
+            'pool.ntp.org': ['162.159.200.1', '162.159.200.123'],
+            'time.nist.gov': ['129.6.15.28', '129.6.15.29'],
+            'time.google.com': ['216.239.35.0', '216.239.35.4'],
+            'ptbtime1.ptb.de': ['192.53.103.108']
+        }
+        
         for peer in self.peers:
+            success = False
+            # First try the hostname
             try:
                 response = client.request(peer, version=3, timeout=5)
                 offsets.append(response.offset)
                 logger.debug(f"NTP peer {peer}: offset={response.offset:.6f}s")
+                success = True
             except Exception as e:
-                logger.warning(f"Failed to poll NTP peer {peer}: {e}")
+                logger.debug(f"Hostname failed for {peer}: {e}")
+                
+            # If hostname failed, try IP fallbacks
+            if not success and peer in ip_fallbacks:
+                for ip in ip_fallbacks[peer]:
+                    try:
+                        response = client.request(ip, version=3, timeout=5)
+                        offsets.append(response.offset)
+                        logger.debug(f"NTP peer {peer} (IP {ip}): offset={response.offset:.6f}s")
+                        success = True
+                        break
+                    except Exception as e:
+                        logger.debug(f"IP fallback {ip} failed for {peer}: {e}")
+                        
+            if not success:
+                logger.warning(f"Failed to poll NTP peer {peer}: all attempts failed")
                 
         return offsets
     
@@ -71,8 +97,10 @@ class MeshMonitor:
         """Update mesh monitoring data"""
         offsets = self.poll_peers()
         if not offsets:
-            logger.warning("No NTP peer responses received")
+            logger.warning(f"No NTP peer responses received from {len(self.peers)} configured peers")
             return None
+        
+        logger.info(f"Successfully polled {len(offsets)} out of {len(self.peers)} NTP peers")
             
         # Calculate current phase gap
         median_offset = statistics.median(offsets)
@@ -178,14 +206,14 @@ class MeshMonitor:
             logger.error(f"Failed to load mesh history: {e}")
 
 
-# Default NTP peers (public time servers)
+# Default NTP peers (public time servers with IP fallbacks)
 DEFAULT_NTP_PEERS = [
     'time.nist.gov',
+    '129.6.15.28',      # NIST time server IP
     'time.google.com', 
+    '216.239.35.0',     # Google time server IP
     'pool.ntp.org',
-    '0.pool.ntp.org',
-    '1.pool.ntp.org',
-    '2.pool.ntp.org'
+    '162.159.200.1'     # Cloudflare NTP IP
 ]
 
 def create_mesh_monitor(peers: Optional[List[str]] = None, interval: int = 60) -> MeshMonitor:
