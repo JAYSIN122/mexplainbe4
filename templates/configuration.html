@@ -3,39 +3,12 @@
 {% block title %}Configuration - Temporal Monitoring{% endblock %}
 
 {% block content %}
-<!-- Authentication Status -->
-<div class="row mb-3">
-    <div class="col-12">
-        {% if is_authenticated %}
-        <div class="alert alert-success d-flex align-items-center">
-            <i class="fas fa-user-check me-2"></i>
-            <div>
-                Authenticated as <strong>{{ user_name }}</strong> - Configuration editing enabled
-            </div>
-        </div>
-        {% else %}
-        <div class="alert alert-warning d-flex align-items-center">
-            <i class="fas fa-lock me-2"></i>
-            <div>
-                <strong>Authentication required for editing</strong> - Configuration is read-only
-                <div class="mt-2">
-                    <script authed="location.reload()" src="https://auth.util.repl.co/script.js"></script>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-    </div>
-</div>
-
 <div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
                     <i class="fas fa-cog me-2"></i>Processing Configuration
-                    {% if not is_authenticated %}
-                    <span class="badge bg-warning ms-2">Read Only</span>
-                    {% endif %}
                 </h5>
             </div>
             <div class="card-body">
@@ -50,16 +23,14 @@
                             <div class="mb-3">
                                 <label for="multitaper_bandwidth" class="form-label">Time-Bandwidth Product (NW)</label>
                                 <input type="number" class="form-control" id="multitaper_bandwidth" 
-                                       value="4.0" step="0.1" min="1" max="10"
-                                       {% if not is_authenticated %}readonly{% endif %}>
+                                       value="4.0" step="0.1" min="1" max="10">
                                 <div class="form-text">Controls frequency resolution vs. variance trade-off</div>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="multitaper_samples" class="form-label">Number of Tapers (K)</label>
                                 <input type="number" class="form-control" id="multitaper_samples" 
-                                       value="7" min="1" max="20"
-                                       {% if not is_authenticated %}readonly{% endif %}>
+                                       value="7" min="1" max="20">
                                 <div class="form-text">Number of orthogonal tapers for spectral estimation</div>
                             </div>
                         </div>
@@ -73,16 +44,14 @@
                             <div class="mb-3">
                                 <label for="coherence_threshold" class="form-label">Coherence Threshold</label>
                                 <input type="number" class="form-control" id="coherence_threshold" 
-                                       value="0.1" step="0.01" min="0" max="1"
-                                       {% if not is_authenticated %}readonly{% endif %}>
+                                       value="0.1" step="0.01" min="0" max="1">
                                 <div class="form-text">Minimum coherence for signal detection</div>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="phase_smoothing_window" class="form-label">Phase Smoothing Window</label>
                                 <input type="number" class="form-control" id="phase_smoothing_window" 
-                                       value="50" min="3" max="200"
-                                       {% if not is_authenticated %}readonly{% endif %}>
+                                       value="50" min="3" max="200">
                                 <div class="form-text">Window size for phase gap smoothing</div>
                             </div>
                         </div>
@@ -98,16 +67,14 @@
                             <div class="mb-3">
                                 <label for="bayes_factor_threshold" class="form-label">Bayes Factor Threshold</label>
                                 <input type="number" class="form-control" id="bayes_factor_threshold" 
-                                       value="10.0" step="1" min="1" max="100"
-                                       {% if not is_authenticated %}readonly{% endif %}>
+                                       value="10.0" step="1" min="1" max="100">
                                 <div class="form-text">Minimum log(BF) for decisive evidence</div>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="prior_strength" class="form-label">Prior Strength</label>
                                 <input type="number" class="form-control" id="prior_strength" 
-                                       value="1.0" step="0.1" min="0.1" max="10"
-                                       {% if not is_authenticated %}readonly{% endif %}>
+                                       value="1.0" step="0.1" min="0.1" max="10">
                                 <div class="form-text">Strength of prior beliefs in model selection</div>
                             </div>
                         </div>
@@ -121,16 +88,14 @@
                             <div class="mb-3">
                                 <label for="gti_critical" class="form-label">Critical Level</label>
                                 <input type="number" class="form-control" id="gti_critical" 
-                                       value="0.2" step="0.01" min="0" max="1"
-                                       {% if not is_authenticated %}readonly{% endif %}>
+                                       value="0.2" step="0.01" min="0" max="1">
                                 <div class="form-text text-danger">Highest alert level</div>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="gti_high" class="form-label">High Level</label>
                                 <input type="number" class="form-control" id="gti_high" 
-                                       value="0.1" step="0.01" min="0" max="1"
-                                       {% if not is_authenticated %}readonly{% endif %}>
+                                       value="0.1" step="0.01" min="0" max="1">
                                 <div class="form-text text-warning">High concern level</div>
                             </div>
                             
@@ -139,8 +104,7 @@
                                     <div class="mb-3">
                                         <label for="gti_medium" class="form-label">Medium Level</label>
                                         <input type="number" class="form-control" id="gti_medium" 
-                                               value="0.05" step="0.01" min="0" max="1"
-                                               {% if not is_authenticated %}readonly{% endif %}>
+                                               value="0.05" step="0.01" min="0" max="1">
                                         <div class="form-text text-info">Medium concern</div>
                                     </div>
                                 </div>
@@ -148,8 +112,7 @@
                                     <div class="mb-3">
                                         <label for="gti_low" class="form-label">Low Level</label>
                                         <input type="number" class="form-control" id="gti_low" 
-                                               value="0.01" step="0.01" min="0" max="1"
-                                               {% if not is_authenticated %}readonly{% endif %}>
+                                               value="0.01" step="0.01" min="0" max="1">
                                         <div class="form-text text-success">Low concern</div>
                                     </div>
                                 </div>
@@ -162,18 +125,12 @@
                             <hr>
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    {% if is_authenticated %}
                                     <button type="button" class="btn btn-primary" onclick="saveConfiguration()">
                                         <i class="fas fa-save me-1"></i>Save Configuration
                                     </button>
                                     <button type="button" class="btn btn-secondary ms-2" onclick="loadConfiguration()">
                                         <i class="fas fa-undo me-1"></i>Reset to Defaults
                                     </button>
-                                    {% else %}
-                                    <button type="button" class="btn btn-primary" disabled>
-                                        <i class="fas fa-lock me-1"></i>Authentication Required
-                                    </button>
-                                    {% endif %}
                                 </div>
                                 <div>
                                     <button type="button" class="btn btn-success" onclick="validateConfiguration()">
@@ -299,11 +256,6 @@
 {% block scripts %}
 <script>
     function saveConfiguration() {
-        {% if not is_authenticated %}
-        showAlert('Authentication required to save configuration.', 'warning');
-        return;
-        {% endif %}
-
         const config = {
             multitaper_bandwidth: parseFloat(document.getElementById('multitaper_bandwidth').value),
             multitaper_samples: parseInt(document.getElementById('multitaper_samples').value),
@@ -335,18 +287,10 @@
 
         Promise.all(savePromises)
             .then(responses => {
-                return Promise.all(responses.map(r => r.json()));
-            })
-            .then(results => {
-                const successful = results.filter(r => r.success);
-                const failed = results.filter(r => !r.success);
-                
-                if (failed.length === 0) {
+                if (responses.every(r => r.ok)) {
                     showAlert('Configuration saved successfully!', 'success');
-                } else if (failed.some(f => f.message && f.message.includes('Authentication required'))) {
-                    showAlert('Authentication expired. Please refresh the page and log in again.', 'warning');
                 } else {
-                    showAlert(`${successful.length} saved, ${failed.length} failed.`, 'warning');
+                    showAlert('Some configuration parameters failed to save.', 'warning');
                 }
             })
             .catch(error => {
