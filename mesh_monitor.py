@@ -45,10 +45,10 @@ class MeshMonitor:
         
         # Fallback IP addresses for common NTP servers
         ip_fallbacks = {
-            'pool.ntp.org': ['162.159.200.1', '162.159.200.123'],
-            'time.nist.gov': ['129.6.15.28', '129.6.15.29'],
-            'time.google.com': ['216.239.35.0', '216.239.35.4'],
-            'ptbtime1.ptb.de': ['192.53.103.108']
+            'pool.ntp.org': ['162.159.200.1', '162.159.200.123', '208.67.222.222'],
+            'time.nist.gov': ['129.6.15.28', '129.6.15.29', '132.163.96.1'],
+            'time.google.com': ['216.239.35.0', '216.239.35.4', '216.239.35.8', '216.239.35.12'],
+            'ptbtime1.ptb.de': ['192.53.103.108', '192.53.103.104']
         }
         
         for peer in self.peers:
@@ -60,7 +60,7 @@ class MeshMonitor:
                 logger.debug(f"NTP peer {peer}: offset={response.offset:.6f}s")
                 success = True
             except Exception as e:
-                logger.debug(f"Hostname failed for {peer}: {e}")
+                logger.debug(f"Hostname failed for {peer}: {type(e).__name__}: {e}")
                 
             # If hostname failed, try IP fallbacks
             if not success and peer in ip_fallbacks:
@@ -72,7 +72,7 @@ class MeshMonitor:
                         success = True
                         break
                     except Exception as e:
-                        logger.debug(f"IP fallback {ip} failed for {peer}: {e}")
+                        logger.debug(f"IP fallback {ip} failed for {peer}: {type(e).__name__}: {e}")
                         
             if not success:
                 logger.warning(f"Failed to poll NTP peer {peer}: all attempts failed")
@@ -98,7 +98,18 @@ class MeshMonitor:
         offsets = self.poll_peers()
         if not offsets:
             logger.warning(f"No NTP peer responses received from {len(self.peers)} configured peers")
-            return None
+            # In fallback mode, return a status indicating connectivity issues
+            return {
+                'timestamp': datetime.fromtimestamp(time.time(), tz=timezone.utc).isoformat(),
+                'phase_gap': 0.0,
+                'slope': 0.0,
+                'median_offset': 0.0,
+                'baseline': 0.0,
+                'peer_count': 0,
+                'eta_days': None,
+                'status': 'network_unreachable',
+                'message': 'All NTP peers unreachable - possible network connectivity issue'
+            }
         
         logger.info(f"Successfully polled {len(offsets)} out of {len(self.peers)} NTP peers")
             
@@ -208,12 +219,12 @@ class MeshMonitor:
 
 # Default NTP peers (public time servers with IP fallbacks)
 DEFAULT_NTP_PEERS = [
-    'time.nist.gov',
-    '129.6.15.28',      # NIST time server IP
-    'time.google.com', 
+    '129.6.15.28',      # NIST time server IP (primary)
     '216.239.35.0',     # Google time server IP
-    'pool.ntp.org',
-    '162.159.200.1'     # Cloudflare NTP IP
+    '162.159.200.1',    # Cloudflare NTP IP  
+    '208.67.222.222',   # OpenDNS NTP
+    'time.nist.gov',    # NIST hostname
+    'time.google.com'   # Google hostname
 ]
 
 def create_mesh_monitor(peers: Optional[List[str]] = None, interval: int = 60) -> MeshMonitor:
