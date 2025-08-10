@@ -1,64 +1,127 @@
+
 {% extends "base.html" %}
 
-{% block title %}Proof - Temporal Monitoring{% endblock %}
+{% block title %}Proof It's Real - Temporal Monitoring{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <h2 class="mb-4">
-                <i class="fas fa-shield-alt me-2"></i>Proof It's Real
-            </h2>
+            <h1 class="mb-4">
+                <i class="fas fa-shield-alt me-2"></i>
+                Proof It's Real - Network Provenance
+            </h1>
+            <p class="text-muted mb-4">
+                Demonstrate real-time network connectivity and data pipeline integrity
+            </p>
+        </div>
+    </div>
 
-            <div class="row">
-                <!-- Network Proofs -->
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="fas fa-network-wired me-1"></i>Network Verification
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <button class="btn btn-primary me-2 mb-2" onclick="ping('https://webtai.bipm.org/ftp/pub/tai/other-products/utcrlab/')">
-                                Ping BIPM
-                            </button>
-                            <button class="btn btn-primary me-2 mb-2" onclick="ping('https://datacenter.iers.org/data/9/dut1.txt')">
-                                Ping IERS
-                            </button>
-                            <button class="btn btn-success me-2 mb-2" onclick="pull()">
-                                Pull Now
-                            </button>
-                            <button class="btn btn-info mb-2" onclick="loadProv()">
-                                Show Provenance
-                            </button>
-                        </div>
-                    </div>
+    <!-- Main Action Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-satellite fa-2x text-primary mb-3"></i>
+                    <h5 class="card-title">Ping BIPM</h5>
+                    <p class="card-text">Test connectivity to BIPM timing servers</p>
+                    <button class="btn btn-primary" onclick="pingHost('https://webtai.bipm.org/ftp/pub/tai/other-products/utcrlab/')">
+                        <i class="fas fa-ping-pong-paddle-ball me-1"></i> Ping
+                    </button>
                 </div>
+            </div>
+        </div>
 
-                <!-- Analysis Proofs -->
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="fas fa-chart-line me-1"></i>Analysis Verification
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <button class="btn btn-warning me-2 mb-2" onclick="fetchJson('/api/forecast')">
-                                Current Forecast
-                            </button>
-                            <button class="btn btn-warning me-2 mb-2" onclick="fetchJson('/api/eta')">
-                                ETA Analysis
-                            </button>
-                            <button class="btn btn-secondary me-2 mb-2" onclick="fetchJson('/api/last_trace')">
-                                Last Traceback
-                            </button>
-                            <button class="btn btn-secondary mb-2" onclick="fetchJson('/api/logs?k=300')">
-                                Tail Logs
-                            </button>
-                        </div>
-                    </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-globe fa-2x text-info mb-3"></i>
+                    <h5 class="card-title">Ping IERS</h5>
+                    <p class="card-text">Test connectivity to IERS data center</p>
+                    <button class="btn btn-info" onclick="pingHost('https://datacenter.iers.org/data/9/dut1.txt')">
+                        <i class="fas fa-ping-pong-paddle-ball me-1"></i> Ping
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-download fa-2x text-success mb-3"></i>
+                    <h5 class="card-title">Pull Now</h5>
+                    <p class="card-text">Trigger data download with provenance</p>
+                    <button class="btn btn-success" onclick="pullData()">
+                        <i class="fas fa-cloud-download-alt me-1"></i> Pull
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-database fa-2x text-warning mb-3"></i>
+                    <h5 class="card-title">Provenance</h5>
+                    <p class="card-text">View file hashes and download metadata</p>
+                    <button class="btn btn-warning" onclick="loadProvenance()">
+                        <i class="fas fa-fingerprint me-1"></i> View
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-2x text-primary mb-3"></i>
+                    <h5 class="card-title">Current Forecast</h5>
+                    <p class="card-text">Latest GTI prediction analysis</p>
+                    <button class="btn btn-outline-primary" onclick="loadForecast()">
+                        <i class="fas fa-crystal-ball me-1"></i> View
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-history fa-2x text-info mb-3"></i>
+                    <h5 class="card-title">10-yr Backtest</h5>
+                    <p class="card-text">Historical forecast validation</p>
+                    <button class="btn btn-outline-info" onclick="loadForecastHistory()">
+                        <i class="fas fa-clock-rotate-left me-1"></i> View
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-bug fa-2x text-danger mb-3"></i>
+                    <h5 class="card-title">Last Traceback</h5>
+                    <p class="card-text">Recent system errors and exceptions</p>
+                    <button class="btn btn-outline-danger" onclick="loadTraceback()">
+                        <i class="fas fa-exclamation-triangle me-1"></i> View
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-file-alt fa-2x text-secondary mb-3"></i>
+                    <h5 class="card-title">Tail Logs</h5>
+                    <p class="card-text">Recent application log entries</p>
+                    <button class="btn btn-outline-secondary" onclick="loadLogs()">
+                        <i class="fas fa-scroll me-1"></i> View
+                    </button>
                 </div>
             </div>
         </div>
@@ -73,7 +136,7 @@
             <button type="button" class="btn-close" onclick="closeModal('m_ping')"></button>
         </div>
         <div class="modal-body">
-            <pre id="ping_content">Loading...</pre>
+            <pre id="ping-results"></pre>
         </div>
     </div>
 </dialog>
@@ -81,11 +144,11 @@
 <dialog id="m_prov" class="modal-dialog">
     <div class="modal-content">
         <div class="modal-header">
-            <h5 class="modal-title">Provenance Records</h5>
+            <h5 class="modal-title">Data Provenance</h5>
             <button type="button" class="btn-close" onclick="closeModal('m_prov')"></button>
         </div>
         <div class="modal-body">
-            <pre id="prov_content">Loading...</pre>
+            <pre id="prov-results"></pre>
         </div>
     </div>
 </dialog>
@@ -93,11 +156,11 @@
 <dialog id="m_forecast" class="modal-dialog">
     <div class="modal-content">
         <div class="modal-header">
-            <h5 class="modal-title">Forecast Data</h5>
+            <h5 class="modal-title">Forecast Results</h5>
             <button type="button" class="btn-close" onclick="closeModal('m_forecast')"></button>
         </div>
         <div class="modal-body">
-            <pre id="forecast_content">Loading...</pre>
+            <pre id="forecast-results"></pre>
         </div>
     </div>
 </dialog>
@@ -105,107 +168,20 @@
 <dialog id="m_logs" class="modal-dialog">
     <div class="modal-content">
         <div class="modal-header">
-            <h5 class="modal-title">System Information</h5>
+            <h5 class="modal-title">Application Logs</h5>
             <button type="button" class="btn-close" onclick="closeModal('m_logs')"></button>
         </div>
         <div class="modal-body">
-            <pre id="logs_content">Loading...</pre>
+            <pre id="logs-results"></pre>
         </div>
     </div>
 </dialog>
 
-<style>
-dialog {
-    border: none;
-    border-radius: 0.5rem;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    max-width: 80vw;
-    max-height: 80vh;
-    overflow: auto;
-}
-
-dialog::backdrop {
-    background: rgba(0, 0, 0, 0.5);
-}
-
-.modal-content {
-    background: var(--bs-body-bg);
-    color: var(--bs-body-color);
-}
-
-.modal-header {
-    border-bottom: 1px solid var(--bs-border-color);
-    padding: 1rem;
-}
-
-.modal-body {
-    padding: 1rem;
-}
-
-.modal-body pre {
-    max-height: 400px;
-    overflow-y: auto;
-    background: var(--bs-dark);
-    color: var(--bs-light);
-    padding: 1rem;
-    border-radius: 0.25rem;
-}
-</style>
-
 <script>
-async function ping(url) {
-    openModal('m_ping');
-    document.getElementById('ping_content').textContent = 'Pinging...';
-
-    try {
-        const response = await fetch(`/api/ping?url=${encodeURIComponent(url)}`);
-        const data = await response.json();
-        document.getElementById('ping_content').textContent = JSON.stringify(data, null, 2);
-    } catch (error) {
-        document.getElementById('ping_content').textContent = `Error: ${error.message}`;
-    }
-}
-
-async function pull() {
-    openModal('m_prov');
-    document.getElementById('prov_content').textContent = 'Pulling data...';
-
-    try {
-        const response = await fetch('/api/pull', { method: 'POST' });
-        const data = await response.json();
-        document.getElementById('prov_content').textContent = JSON.stringify(data, null, 2);
-    } catch (error) {
-        document.getElementById('prov_content').textContent = `Error: ${error.message}`;
-    }
-}
-
-async function loadProv() {
-    openModal('m_prov');
-    document.getElementById('prov_content').textContent = 'Loading provenance...';
-
-    try {
-        const response = await fetch('/api/provenance?n=10');
-        const data = await response.json();
-        document.getElementById('prov_content').textContent = JSON.stringify(data, null, 2);
-    } catch (error) {
-        document.getElementById('prov_content').textContent = `Error: ${error.message}`;
-    }
-}
-
+// Helper functions
 async function fetchJson(path) {
-    const modal = path.includes('forecast') ? 'm_forecast' : 'm_logs';
-    const content = path.includes('forecast') ? 'forecast_content' : 'logs_content';
-
-    openModal(modal);
-    document.getElementById(content).textContent = 'Loading...';
-
-    try {
-        const response = await fetch(path);
-        const data = await response.json();
-        document.getElementById(content).textContent = JSON.stringify(data, null, 2);
-    } catch (error) {
-        document.getElementById(content).textContent = `Error: ${error.message}`;
-    }
+    const response = await fetch(path);
+    return await response.json();
 }
 
 function openModal(id) {
@@ -215,5 +191,124 @@ function openModal(id) {
 function closeModal(id) {
     document.getElementById(id).close();
 }
+
+// Action functions
+async function pingHost(url) {
+    try {
+        const result = await fetchJson(`/api/ping?url=${encodeURIComponent(url)}`);
+        document.getElementById('ping-results').textContent = JSON.stringify(result, null, 2);
+        openModal('m_ping');
+    } catch (error) {
+        document.getElementById('ping-results').textContent = `Error: ${error.message}`;
+        openModal('m_ping');
+    }
+}
+
+async function pullData() {
+    try {
+        const result = await fetchJson('/api/pull');
+        document.getElementById('ping-results').textContent = JSON.stringify(result, null, 2);
+        openModal('m_ping');
+    } catch (error) {
+        document.getElementById('ping-results').textContent = `Error: ${error.message}`;
+        openModal('m_ping');
+    }
+}
+
+async function loadProvenance() {
+    try {
+        const result = await fetchJson('/api/provenance?n=10');
+        document.getElementById('prov-results').textContent = JSON.stringify(result, null, 2);
+        openModal('m_prov');
+    } catch (error) {
+        document.getElementById('prov-results').textContent = `Error: ${error.message}`;
+        openModal('m_prov');
+    }
+}
+
+async function loadForecast() {
+    try {
+        const result = await fetchJson('/api/forecast');
+        document.getElementById('forecast-results').textContent = JSON.stringify(result, null, 2);
+        openModal('m_forecast');
+    } catch (error) {
+        document.getElementById('forecast-results').textContent = `Error: ${error.message}`;
+        openModal('m_forecast');
+    }
+}
+
+async function loadForecastHistory() {
+    try {
+        const result = await fetchJson('/api/forecast_history');
+        document.getElementById('forecast-results').textContent = JSON.stringify(result, null, 2);
+        openModal('m_forecast');
+    } catch (error) {
+        document.getElementById('forecast-results').textContent = `Error: ${error.message}`;
+        openModal('m_forecast');
+    }
+}
+
+async function loadTraceback() {
+    try {
+        const result = await fetchJson('/api/last_trace');
+        document.getElementById('logs-results').textContent = JSON.stringify(result, null, 2);
+        openModal('m_logs');
+    } catch (error) {
+        document.getElementById('logs-results').textContent = `Error: ${error.message}`;
+        openModal('m_logs');
+    }
+}
+
+async function loadLogs() {
+    try {
+        const result = await fetchJson('/api/logs?k=300');
+        document.getElementById('logs-results').textContent = JSON.stringify(result, null, 2);
+        openModal('m_logs');
+    } catch (error) {
+        document.getElementById('logs-results').textContent = `Error: ${error.message}`;
+        openModal('m_logs');
+    }
+}
+
+// Modal styling
+document.addEventListener('DOMContentLoaded', function() {
+    const dialogs = document.querySelectorAll('dialog');
+    dialogs.forEach(dialog => {
+        dialog.style.maxWidth = '80vw';
+        dialog.style.maxHeight = '80vh';
+        dialog.style.backgroundColor = 'var(--bs-dark)';
+        dialog.style.color = 'var(--bs-light)';
+        dialog.style.border = '1px solid var(--bs-secondary)';
+        dialog.style.borderRadius = '0.375rem';
+    });
+});
 </script>
+
+<style>
+dialog {
+    padding: 0;
+    border: none;
+    border-radius: 0.375rem;
+}
+
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background: var(--bs-dark);
+    color: var(--bs-light);
+    border: 1px solid var(--bs-secondary);
+}
+
+pre {
+    background: var(--bs-gray-900);
+    color: var(--bs-light);
+    padding: 1rem;
+    border-radius: 0.375rem;
+    max-height: 400px;
+    overflow-y: auto;
+    font-size: 0.875rem;
+}
+</style>
 {% endblock %}
