@@ -46,9 +46,14 @@ class GTIPipeline:
                         and values as arrays of (timestamp, value) pairs
 
         Returns:
-            dict: Complete analysis results including GTI calculation
+            dict: Complete analysis results including GTI calculation or None if no data
         """
         try:
+            # Check if we have any real data
+            if not stream_data or all(len(data) == 0 for data in stream_data.values()):
+                logger.info("No data streams available - GTI pipeline cannot run")
+                return None
+
             logger.info("Starting GTI pipeline processing")
 
             # Step 1-2: Prepare residuals and reference

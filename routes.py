@@ -309,28 +309,36 @@ def api_ingest_data():
                 'message': 'No data was ingested from any source'
             }), 400
 
-        # Store ingested data in database
+        # Store ingested data in database only if we have data
+        total_points = 0
         for stream_type, data in stream_data.items():
-            for timestamp, value in data[-10:]:  # Store only last 10 points to avoid overflow
-                # Convert timestamp to datetime
-                dt = datetime.fromtimestamp(timestamp)
+            if data:  # Only process streams with actual data
+                for timestamp, value in data[-10:]:  # Store only last 10 points to avoid overflow
+                    # Convert timestamp to datetime
+                    dt = datetime.fromtimestamp(timestamp)
 
-                # Create new data point
-                data_point = DataStream()
-                data_point.stream_type = stream_type
-                data_point.timestamp = dt
-                data_point.value = value
+                    # Create new data point
+                    data_point = DataStream()
+                    data_point.stream_type = stream_type
+                    data_point.timestamp = dt
+                    data_point.value = value
 
-                db.session.add(data_point)
+                    db.session.add(data_point)
+                    total_points += 1
 
-        db.session.commit()
-
-        return jsonify({
-            'success': True,
-            'message': f'Successfully ingested data from {len(stream_data)} streams',
-            'streams': list(stream_data.keys()),
-            'data_points': {k: len(v) for k, v in stream_data.items()}
-        })
+        if total_points > 0:
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': f'Successfully ingested data from {len([k for k, v in stream_data.items() if v])} streams',
+                'streams': [k for k, v in stream_data.items() if v],
+                'data_points': {k: len(v) for k, v in stream_data.items() if v}
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No real data available to ingest - all data sources returned empty'
+            }), 204
 
     except Exception as e:
         logger.error(f"Error in data ingestion API: {str(e)}")

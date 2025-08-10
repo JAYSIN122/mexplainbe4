@@ -38,42 +38,42 @@ class DataIngestion:
 
     def _ingest_tai_data(self):
         """Ingest TAI/UTC offset data from BIPM files"""
-        # Read from real BIPM data files
+        # Read from real BIPM data files only
         bipm_file = "data/bipm/utcrlab.all"
         if os.path.exists(bipm_file):
             return self._parse_bipm_data(bipm_file)
         else:
-            logger.warning("No BIPM data file found")
+            logger.info("No BIPM data file found - no data returned")
             return []
 
     def _ingest_gnss_data(self):
         """Ingest GNSS clock data from IGS products"""
-        # Look for IGS clock files or processed GNSS data
+        # Look for real IGS clock files only
         gnss_file = "data/gnss/clock_data.csv"
         if os.path.exists(gnss_file):
-            return self._load_synthetic_data('gnss')
+            return self._load_csv_data(gnss_file)
         else:
-            logger.warning("No GNSS data file found")
+            logger.info("No GNSS data file found - no data returned")
             return []
 
     def _ingest_vlbi_data(self):
         """Ingest VLBI delay residuals"""
-        # Look for VLBI data files
+        # Look for real VLBI data files only
         vlbi_file = "data/vlbi/delays.csv"
         if os.path.exists(vlbi_file):
-            return self._load_synthetic_data('vlbi')
+            return self._load_csv_data(vlbi_file)
         else:
-            logger.warning("No VLBI data file found")
+            logger.info("No VLBI data file found - no data returned")
             return []
 
     def _ingest_pta_data(self):
         """Ingest Pulsar Timing Array TOA residuals"""
-        # Look for PTA data files
+        # Look for real PTA data files only
         pta_file = "data/pta/residuals.csv"
         if os.path.exists(pta_file):
-            return self._load_synthetic_data('pta')
+            return self._load_csv_data(pta_file)
         else:
-            logger.warning("No PTA data file found")
+            logger.info("No PTA data file found - no data returned")
             return []
 
     def _parse_bipm_data(self, filepath):
@@ -101,17 +101,12 @@ class DataIngestion:
             logger.error(f"Error parsing BIPM data: {str(e)}")
             return []
 
-    def _load_synthetic_data(self, stream_type):
-        """Load data from CSV files only - no synthetic generation"""
+    def _load_csv_data(self, filepath):
+        """Load data from CSV files"""
         try:
-            data_file = f"data/stream_{stream_type}.csv"
-            if os.path.exists(data_file):
-                data = np.loadtxt(data_file, delimiter=',')
-                # Convert to list of (timestamp, value) tuples
-                return [(row[0], row[1]) for row in data]
-            else:
-                logger.warning(f"No data file found for {stream_type} at {data_file}")
-                return []
+            data = np.loadtxt(filepath, delimiter=',')
+            # Convert to list of (timestamp, value) tuples
+            return [(row[0], row[1]) for row in data]
         except Exception as e:
-            logger.error(f"Error loading data for {stream_type}: {str(e)}")
+            logger.error(f"Error loading CSV data from {filepath}: {str(e)}")
             return []
