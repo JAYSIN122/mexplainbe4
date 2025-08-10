@@ -24,14 +24,23 @@
                                 <label for="multitaper_bandwidth" class="form-label">Time-Bandwidth Product (NW)</label>
                                 <input type="number" class="form-control" id="multitaper_bandwidth" 
                                        value="4.0" step="0.1" min="1" max="10">
-                                <div class="form-text">Controls frequency resolution vs. variance trade-off</div>
+                                <div class="form-text">
+                                    <strong>Description:</strong> Controls the frequency resolution versus variance trade-off in multitaper spectral analysis. 
+                                    Higher values (6-8) provide better frequency resolution but increase spectral variance. 
+                                    Lower values (2-3) reduce variance but decrease frequency resolution. 
+                                    Standard value of 4.0 provides optimal balance for most timing signal analysis applications.
+                                </div>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="multitaper_samples" class="form-label">Number of Tapers (K)</label>
                                 <input type="number" class="form-control" id="multitaper_samples" 
                                        value="7" min="1" max="20">
-                                <div class="form-text">Number of orthogonal tapers for spectral estimation</div>
+                                <div class="form-text">
+                                    <strong>Description:</strong> Number of orthogonal DPSS (Discrete Prolate Spheroidal Sequence) tapers used for spectral estimation. 
+                                    Maximum reliable number is typically 2*NW-1. More tapers reduce spectral variance but require more computation. 
+                                    Optimal range is 5-9 for NW=4. Each taper provides an independent spectral estimate that gets averaged for robustness.
+                                </div>
                             </div>
                         </div>
 
@@ -45,14 +54,24 @@
                                 <label for="coherence_threshold" class="form-label">Coherence Threshold</label>
                                 <input type="number" class="form-control" id="coherence_threshold" 
                                        value="0.1" step="0.01" min="0" max="1">
-                                <div class="form-text">Minimum coherence for signal detection</div>
+                                <div class="form-text">
+                                    <strong>Description:</strong> Minimum cross-spectral coherence level required for detecting coherent signals between timing references. 
+                                    Values closer to 1.0 indicate stronger coherence. Lower thresholds (0.05-0.1) increase sensitivity but may produce false positives. 
+                                    Higher thresholds (0.2-0.5) reduce false alarms but may miss weak coherent signals. 
+                                    Standard value 0.1 provides good balance for gravitational timing interferometry applications.
+                                </div>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="phase_smoothing_window" class="form-label">Phase Smoothing Window</label>
                                 <input type="number" class="form-control" id="phase_smoothing_window" 
                                        value="50" min="3" max="200">
-                                <div class="form-text">Window size for phase gap smoothing</div>
+                                <div class="form-text">
+                                    <strong>Description:</strong> Moving average window size (in data points) for smoothing phase gap calculations. 
+                                    Larger windows (100-200) provide more stable phase estimates but reduce temporal resolution. 
+                                    Smaller windows (10-30) preserve transient features but increase noise sensitivity. 
+                                    Standard value 50 balances noise reduction with responsiveness to genuine phase variations.
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -68,14 +87,24 @@
                                 <label for="bayes_factor_threshold" class="form-label">Bayes Factor Threshold</label>
                                 <input type="number" class="form-control" id="bayes_factor_threshold" 
                                        value="10.0" step="1" min="1" max="100">
-                                <div class="form-text">Minimum log(BF) for decisive evidence</div>
+                                <div class="form-text">
+                                    <strong>Description:</strong> Minimum natural logarithm of Bayes Factor required for decisive evidence in model comparison. 
+                                    ln(BF) > 10 indicates very strong evidence, ln(BF) > 5 indicates strong evidence, ln(BF) > 2 indicates positive evidence. 
+                                    Higher thresholds (20-50) require stronger evidence before triggering alerts but reduce false positives. 
+                                    Standard value 10.0 follows Jeffreys' scale for scientific evidence evaluation.
+                                </div>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="prior_strength" class="form-label">Prior Strength</label>
                                 <input type="number" class="form-control" id="prior_strength" 
                                        value="1.0" step="0.1" min="0.1" max="10">
-                                <div class="form-text">Strength of prior beliefs in model selection</div>
+                                <div class="form-text">
+                                    <strong>Description:</strong> Strength parameter for prior probability distributions in Bayesian model selection. 
+                                    Higher values (2-5) increase confidence in prior assumptions and require stronger evidence to change beliefs. 
+                                    Lower values (0.1-0.5) make the analysis more data-driven with weaker prior influence. 
+                                    Standard value 1.0 provides balanced weighting between prior knowledge and observed data.
+                                </div>
                             </div>
                         </div>
 
@@ -89,14 +118,24 @@
                                 <label for="gti_critical" class="form-label">Critical Level</label>
                                 <input type="number" class="form-control" id="gti_critical" 
                                        value="0.2" step="0.01" min="0" max="1">
-                                <div class="form-text text-danger">Highest alert level</div>
+                                <div class="form-text text-danger">
+                                    <strong>Description:</strong> Critical GTI threshold indicating maximum allowed deviation from expected timing behavior. 
+                                    Values above this level trigger immediate alerts and require urgent investigation. 
+                                    Represents potential systematic breakdown in timing reference synchronization that could indicate fundamental physics anomalies. 
+                                    Standard value 0.2 corresponds to 20% deviation from baseline timing correlations.
+                                </div>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="gti_high" class="form-label">High Level</label>
                                 <input type="number" class="form-control" id="gti_high" 
                                        value="0.1" step="0.01" min="0" max="1">
-                                <div class="form-text text-warning">High concern level</div>
+                                <div class="form-text text-warning">
+                                    <strong>Description:</strong> High alert threshold for elevated GTI activity requiring increased monitoring attention. 
+                                    Indicates significant but non-critical deviations in timing correlations across reference systems. 
+                                    May suggest emerging systematic effects or environmental influences on timing precision. 
+                                    Standard value 0.1 provides early warning before reaching critical levels.
+                                </div>
                             </div>
                             
                             <div class="row">
@@ -105,7 +144,12 @@
                                         <label for="gti_medium" class="form-label">Medium Level</label>
                                         <input type="number" class="form-control" id="gti_medium" 
                                                value="0.05" step="0.01" min="0" max="1">
-                                        <div class="form-text text-info">Medium concern</div>
+                                        <div class="form-text text-info">
+                                            <strong>Description:</strong> Medium alert threshold for moderate GTI activity warranting routine monitoring. 
+                                            Represents normal operational fluctuations in timing system correlations. 
+                                            Useful for trend analysis and establishing baseline performance metrics. 
+                                            Standard value 0.05 captures typical day-to-day timing variations.
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-6">
@@ -113,7 +157,12 @@
                                         <label for="gti_low" class="form-label">Low Level</label>
                                         <input type="number" class="form-control" id="gti_low" 
                                                value="0.01" step="0.01" min="0" max="1">
-                                        <div class="form-text text-success">Low concern</div>
+                                        <div class="form-text text-success">
+                                            <strong>Description:</strong> Low alert threshold for minimal GTI activity during normal operations. 
+                                            Represents expected precision limits and measurement uncertainties in timing systems. 
+                                            Values below this indicate optimal system performance with minimal external influences. 
+                                            Standard value 0.01 defines baseline noise floor for timing correlations.
+                                        </div>
                                     </div>
                                 </div>
                             </div>
