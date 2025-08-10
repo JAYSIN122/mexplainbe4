@@ -37,8 +37,7 @@ class DataIngestion:
         return stream_data
 
     def _ingest_tai_data(self):
-        """Ingest TAI/UTC offset data from BIPM files"""
-        # Read from real BIPM data files only
+        """Ingest TAI/UTC offset data from REAL BIPM files ONLY"""
         bipm_file = "data/bipm/utcrlab.all"
         if os.path.exists(bipm_file):
             return self._parse_bipm_data(bipm_file)
