@@ -911,30 +911,7 @@ def api_eta():
         "eta_date_utc": eta_date
     }), 200
 
-@app.route('/api/provenance')
-def api_provenance():
-    """Return last N lines from provenance.jsonl"""
-    n = request.args.get('n', 50, type=int)
-    n = max(1, min(n, 1000))  # Limit between 1-1000
 
-    try:
-        with open('data/_meta/provenance.jsonl', 'r') as f:
-            lines = f.readlines()
-
-        # Get last n lines
-        recent_lines = lines[-n:] if len(lines) > n else lines
-        records = []
-        for line in recent_lines:
-            try:
-                records.append(json.loads(line.strip()))
-            except json.JSONDecodeError:
-                continue
-
-        return jsonify({"ok": True, "records": records, "count": len(records)})
-    except FileNotFoundError:
-        return jsonify({"ok": True, "records": [], "count": 0})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route('/api/ping')
 def api_ping():
