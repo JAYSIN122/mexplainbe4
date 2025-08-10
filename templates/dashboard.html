@@ -47,6 +47,26 @@
     </div>
 
     <!-- Phase Gap Card -->
+
+<!-- Mesh Monitor Status -->
+<div class="col-lg-6 mb-4">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-network-wired me-2"></i>Mesh Network Status
+            </h5>
+        </div>
+        <div class="card-body">
+            <div id="mesh-status">
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    <span>Loading mesh status...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
     <div class="col-lg-4 col-md-6 mb-4">
         <div class="card">
             <div class="card-body">
@@ -214,8 +234,11 @@
                         <button class="btn btn-success me-2" onclick="runAnalysis()">
                             <i class="fas fa-calculator me-1"></i>Run Analysis
                         </button>
-                        <button class="btn btn-info" onclick="refreshCharts()">
+                        <button class="btn btn-info me-2" onclick="refreshCharts()">
                             <i class="fas fa-sync me-1"></i>Refresh Charts
+                        </button>
+                        <button class="btn btn-warning" onclick="updateMeshMonitor()">
+                            <i class="fas fa-network-wired me-1"></i>Update Mesh
                         </button>
                     </div>
                     <div class="col-md-6 text-end">

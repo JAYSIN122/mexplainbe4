@@ -36,6 +36,11 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_pre_ping": True,
 }
 
+# Mesh monitor configuration
+app.config["USE_MESH_MONITOR"] = os.environ.get("USE_MESH_MONITOR", "false").lower() == "true"
+app.config["MESH_PEERS"] = os.environ.get("MESH_PEERS", "").split(",") if os.environ.get("MESH_PEERS") else None
+app.config["MESH_INTERVAL"] = int(os.environ.get("MESH_INTERVAL", "60"))
+
 # Initialize the app with the extension
 db.init_app(app)
 

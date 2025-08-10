@@ -130,6 +130,24 @@ data_ingestion = DataIngestion()
 signal_processor = SignalProcessor()
 bayesian_analyzer = BayesianAnalyzer()
 
+# Initialize mesh monitor if enabled
+mesh_monitor = None
+if app.config.get("USE_MESH_MONITOR"):
+    try:
+        from mesh_monitor import create_mesh_monitor
+        mesh_monitor = create_mesh_monitor(
+            peers=app.config.get("MESH_PEERS"),
+            interval=app.config.get("MESH_INTERVAL", 60)
+        )
+        # Load existing history
+        from pathlib import Path
+        mesh_history_path = Path("artifacts/mesh_history.json")
+        mesh_monitor.load_history(mesh_history_path)
+        logger.info("Mesh monitor initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize mesh monitor: {e}")
+        mesh_monitor = None
+
 @app.route('/')
 def dashboard():
     """Main dashboard view"""
@@ -187,6 +205,68 @@ def configuration():
         logger.error(f"Error rendering configuration: {str(e)}")
         flash(f"Error loading configuration: {str(e)}", 'error')
         return render_template('configuration.html', configurations={})
+
+@app.route('/api/mesh_status')
+def mesh_status():
+    """Get mesh network monitoring status"""
+    try:
+        if not mesh_monitor:
+            return jsonify({
+                'active': False,
+                'message': 'Mesh monitoring not enabled'
+            })
+        
+        # Update mesh data
+        update_result = mesh_monitor.update()
+        if update_result:
+            # Save updated history
+            from pathlib import Path
+            mesh_history_path = Path("artifacts/mesh_history.json")
+            mesh_monitor.save_history(mesh_history_path)
+        
+        status = mesh_monitor.get_status()
+        return jsonify(status)
+        
+    except Exception as e:
+        logger.error(f"Error in mesh status: {str(e)}")
+        return jsonify({
+            'active': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/mesh_update', methods=['POST'])
+def mesh_update():
+    """Manually trigger mesh monitor update"""
+    try:
+        if not mesh_monitor:
+            return jsonify({
+                'success': False,
+                'message': 'Mesh monitoring not enabled'
+            })
+        
+        result = mesh_monitor.update()
+        if result:
+            # Save history
+            from pathlib import Path
+            mesh_history_path = Path("artifacts/mesh_history.json")
+            mesh_monitor.save_history(mesh_history_path)
+            
+            return jsonify({
+                'success': True,
+                'data': result
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No peer responses received'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error in mesh update: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/analysis')
 def analysis():

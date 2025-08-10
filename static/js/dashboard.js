@@ -46,7 +46,117 @@ function initializeDashboard() {
         });
     }
     
+    // Load initial mesh status
+    updateMeshStatus();
+    
     console.log('Dashboard initialization complete');
+}
+
+function updateMeshStatus() {
+    fetch('/api/mesh_status')
+        .then(response => response.json())
+        .then(data => {
+            const meshStatusDiv = document.getElementById('mesh-status');
+            if (!meshStatusDiv) return;
+            
+            if (!data.active) {
+                meshStatusDiv.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="fas fa-times-circle me-2"></i>
+                        ${data.message || 'Mesh monitoring disabled'}
+                    </div>`;
+                return;
+            }
+            
+            const etaDisplay = data.eta_days !== null ? 
+                `${data.eta_days.toFixed(2)} days` : 'Not converging';
+            
+            const statusClass = data.eta_days !== null && data.eta_days < 30 ? 'text-warning' : 'text-success';
+            
+            meshStatusDiv.innerHTML = `
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="scientific-value ${statusClass}">${data.phase_gap.toFixed(6)}s</div>
+                            <small class="text-muted">Phase Gap</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="scientific-value">${data.slope.toExponential(2)}</div>
+                            <small class="text-muted">Slope (s/s)</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="scientific-value ${statusClass}">${etaDisplay}</div>
+                            <small class="text-muted">ETA to Zero</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="scientific-value text-info">${data.peer_count}</div>
+                            <small class="text-muted">Active Peers</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-2">
+                    <small class="text-muted">
+                        Last updated: ${new Date(data.timestamp).toLocaleTimeString()}
+                    </small>
+                </div>`;
+        })
+        .catch(error => {
+            console.error('Error updating mesh status:', error);
+            const meshStatusDiv = document.getElementById('mesh-status');
+            if (meshStatusDiv) {
+                meshStatusDiv.innerHTML = `
+                    <div class="text-center text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error loading mesh status
+                    </div>`;
+            }
+        });
+}
+
+function updateMeshMonitor() {
+    fetch('/api/mesh_update', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Mesh monitor updated:', data.data);
+                updateMeshStatus(); // Refresh display
+                showAlert('Mesh monitor updated successfully', 'success');
+            } else {
+                console.error('Mesh update failed:', data.message);
+                showAlert('Mesh update failed: ' + data.message, 'warning');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating mesh monitor:', error);
+            showAlert('Error updating mesh monitor', 'danger');
+        });
+}
+
+function showAlert(message, type = 'info') {
+    // Simple alert function - can be enhanced with Bootstrap alerts
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
 }
 
 function updateCurrentTime() {
