@@ -37,28 +37,72 @@ class DataIngestion:
         return stream_data
     
     def _ingest_tai_data(self):
-        """Ingest TAI/UTC offset data from BIPM Circular-T"""
-        # In production, this would connect to BIPM data sources
-        # For now, we'll check if synthetic data exists
-        return self._load_synthetic_data('tai')
+        """Ingest TAI/UTC offset data from BIPM files"""
+        # Read from real BIPM data files
+        bipm_file = "data/bipm/utcrlab.all"
+        if os.path.exists(bipm_file):
+            return self._parse_bipm_data(bimp_file)
+        else:
+            logger.warning("No BIPM data file found")
+            return []
     
     def _ingest_gnss_data(self):
         """Ingest GNSS clock data from IGS products"""
-        # In production, this would connect to IGS data streams
-        return self._load_synthetic_data('gnss')
+        # Look for IGS clock files or processed GNSS data
+        gnss_file = "data/gnss/clock_data.csv"
+        if os.path.exists(gnss_file):
+            return self._load_synthetic_data('gnss')
+        else:
+            logger.warning("No GNSS data file found")
+            return []
     
     def _ingest_vlbi_data(self):
         """Ingest VLBI delay residuals"""
-        # In production, this would connect to VLBI networks
-        return self._load_synthetic_data('vlbi')
+        # Look for VLBI data files
+        vlbi_file = "data/vlbi/delays.csv"
+        if os.path.exists(vlbi_file):
+            return self._load_synthetic_data('vlbi')
+        else:
+            logger.warning("No VLBI data file found")
+            return []
     
     def _ingest_pta_data(self):
         """Ingest Pulsar Timing Array TOA residuals"""
-        # In production, this would connect to PTA data sources
-        return self._load_synthetic_data('pta')
+        # Look for PTA data files
+        pta_file = "data/pta/residuals.csv"
+        if os.path.exists(pta_file):
+            return self._load_synthetic_data('pta')
+        else:
+            logger.warning("No PTA data file found")
+            return []
+    
+    def _parse_bipm_data(self, filepath):
+        """Parse BIPM UTC(lab) data"""
+        try:
+            data_points = []
+            with open(filepath, 'r') as f:
+                for line in f:
+                    # Parse BIPM format - adjust based on actual format
+                    if line.strip() and not line.startswith('#'):
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            try:
+                                # Assuming first column is MJD, second is offset
+                                mjd = float(parts[0])
+                                offset = float(parts[1])
+                                # Convert MJD to Unix timestamp
+                                timestamp = (mjd - 40587.0) * 86400.0
+                                data_points.append((timestamp, offset))
+                            except ValueError:
+                                continue
+            logger.info(f"Loaded {len(data_points)} BIPM data points")
+            return data_points
+        except Exception as e:
+            logger.error(f"Error parsing BIPM data: {str(e)}")
+            return []
     
     def _load_synthetic_data(self, stream_type):
-        """Load synthetic data if available"""
+        """Load data from CSV files only - no synthetic generation"""
         try:
             data_file = f"data/stream_{stream_type}.csv"
             if os.path.exists(data_file):
@@ -66,53 +110,8 @@ class DataIngestion:
                 # Convert to list of (timestamp, value) tuples
                 return [(row[0], row[1]) for row in data]
             else:
-                # Generate minimal synthetic data for demonstration
-                return self._generate_minimal_synthetic(stream_type)
+                logger.warning(f"No data file found for {stream_type} at {data_file}")
+                return []
         except Exception as e:
             logger.error(f"Error loading data for {stream_type}: {str(e)}")
             return []
-    
-    def _generate_minimal_synthetic(self, stream_type):
-        """Generate minimal synthetic data for testing"""
-        logger.info(f"Generating minimal synthetic data for {stream_type}")
-        
-        # Create 100 data points over the last 24 hours
-        n_points = 100
-        end_time = datetime.utcnow()
-        start_time = end_time - timedelta(hours=24)
-        
-        timestamps = []
-        values = []
-        
-        for i in range(n_points):
-            # Linear interpolation of time
-            t = start_time + (end_time - start_time) * i / (n_points - 1)
-            timestamp = t.timestamp()
-            
-            # Generate synthetic value with some physics-inspired characteristics
-            base_freq = 1.0 / (3600 * 24)  # Daily cycle
-            noise_level = 1e-12
-            
-            # Different streams have different characteristics
-            if stream_type == 'tai':
-                # TAI data - very stable with small variations
-                value = noise_level * 0.1 * np.sin(2 * np.pi * base_freq * timestamp)
-            elif stream_type == 'gnss':
-                # GNSS - more variation due to atmospheric effects
-                value = noise_level * np.sin(2 * np.pi * base_freq * timestamp) + \
-                       noise_level * 0.5 * np.random.normal()
-            elif stream_type == 'vlbi':
-                # VLBI - similar to GNSS but different phase
-                value = noise_level * np.sin(2 * np.pi * base_freq * timestamp + np.pi/4) + \
-                       noise_level * 0.3 * np.random.normal()
-            elif stream_type == 'pta':
-                # PTA - lower frequency variations
-                value = noise_level * 0.5 * np.sin(2 * np.pi * base_freq * 0.1 * timestamp) + \
-                       noise_level * 0.2 * np.random.normal()
-            else:
-                value = noise_level * np.random.normal()
-            
-            timestamps.append(timestamp)
-            values.append(value)
-        
-        return list(zip(timestamps, values))

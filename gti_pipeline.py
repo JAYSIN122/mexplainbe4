@@ -148,32 +148,34 @@ class GTIPipeline:
 
     def _calculate_expected_values(self, timestamps, stream_type):
         """Calculate expected values based on Sun-clock model"""
-        # Simplified model - in practice this would include:
-        # - GR/SR corrections
-        # - Ephemeris calculations
-        # - Local site effects
-
-        # For now, return a simple sinusoidal model with noise
-        t_norm = (timestamps - timestamps[0]) / (timestamps[-1] - timestamps[0])
-        freq = 1.0  # Normalized frequency
-
-        expected = 1e-12 * np.sin(2 * np.pi * freq * t_norm)
-        return expected
+        # Return zeros - let the real data speak for itself
+        # In production this would include proper theoretical models
+        return np.zeros(len(timestamps))
 
     def _generate_sun_clock_reference(self, residuals):
-        """Generate Sun-clock reference signal"""
+        """Generate Sun-clock reference signal from real data"""
+        if not residuals:
+            return {'timestamps': np.array([]), 'signal': np.array([]), 'frequency': 0.0}
+            
         # Use the first available stream as time base
         first_stream = next(iter(residuals.values()))
         timestamps = first_stream['timestamps']
 
-        # Generate reference sinusoid at detected frequency
-        t_norm = (timestamps - timestamps[0]) / (timestamps[-1] - timestamps[0])
-        reference_freq = 1.0  # This would be determined from spectral analysis
+        # Use median of all streams as reference (simple approach)
+        all_values = []
+        for stream_data in residuals.values():
+            if len(stream_data['values']) == len(timestamps):
+                all_values.append(stream_data['values'])
+        
+        if all_values:
+            reference_signal = np.median(all_values, axis=0)
+        else:
+            reference_signal = np.zeros(len(timestamps))
 
         reference = {
             'timestamps': timestamps,
-            'signal': 1e-12 * np.cos(2 * np.pi * reference_freq * t_norm),
-            'frequency': reference_freq
+            'signal': reference_signal,
+            'frequency': 1.0 / (24 * 3600)  # Daily frequency as baseline
         }
 
         return reference
