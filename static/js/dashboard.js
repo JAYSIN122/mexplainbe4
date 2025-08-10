@@ -167,7 +167,15 @@ function updateCurrentTime() {
     }
 }
 
+// Add debouncing to prevent update loops
+let updateInProgress = false;
+
 function updateSystemStatus() {
+    if (updateInProgress) {
+        return;
+    }
+    updateInProgress = true;
+    
     fetch('/api/system_status')
         .then(response => response.json())
         .then(data => {
@@ -182,6 +190,9 @@ function updateSystemStatus() {
         .catch(error => {
             console.error('System status check failed:', error);
             updateStatusIndicator({ overall: 'error' });
+        })
+        .finally(() => {
+            updateInProgress = false;
         });
 }
 

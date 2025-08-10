@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import requests
 from pathlib import Path
+from datetime import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -154,16 +155,16 @@ def dashboard():
     try:
         # Get latest GTI calculation
         latest_gti = GTICalculation.query.order_by(GTICalculation.timestamp.desc()).first()
-        
+
         # Get recent GTI history for trending
         recent_gtis = GTICalculation.query.order_by(GTICalculation.timestamp.desc()).limit(100).all()
-        
+
         # Get data stream status
         stream_status = {}
         for stream_type in ['TAI', 'GNSS', 'VLBI', 'PTA']:
             latest_data = DataStream.query.filter_by(stream_type=stream_type)\
                 .order_by(DataStream.timestamp.desc()).first()
-            
+
             if latest_data:
                 time_diff = datetime.utcnow() - latest_data.timestamp
                 stream_status[stream_type] = {
@@ -177,12 +178,12 @@ def dashboard():
                     'last_update': None,
                     'latest_value': None
                 }
-        
+
         return render_template('dashboard.html', 
                              latest_gti=latest_gti,
                              recent_gtis=recent_gtis,
                              stream_status=stream_status)
-        
+
     except Exception as e:
         logger.error(f"Error rendering dashboard: {str(e)}")
         flash(f"Error loading dashboard: {str(e)}", 'error')
@@ -198,9 +199,9 @@ def configuration():
         # Get all configuration parameters
         configs = ProcessingConfiguration.query.all()
         config_dict = {config.parameter_name: config for config in configs}
-        
+
         return render_template('configuration.html', configurations=config_dict)
-        
+
     except Exception as e:
         logger.error(f"Error rendering configuration: {str(e)}")
         flash(f"Error loading configuration: {str(e)}", 'error')
@@ -211,13 +212,13 @@ def mesh_status():
     """Get mesh network monitoring status"""
     try:
         from app import mesh_monitor
-        
+
         if not mesh_monitor:
             return jsonify({
                 'active': False,
                 'message': 'Mesh monitoring not enabled'
             })
-        
+
         # Update mesh data
         update_result = mesh_monitor.update()
         if update_result:
@@ -225,10 +226,10 @@ def mesh_status():
             from pathlib import Path
             mesh_history_path = Path("artifacts/mesh_history.json")
             mesh_monitor.save_history(mesh_history_path)
-        
+
         status = mesh_monitor.get_status()
         return jsonify(status)
-        
+
     except Exception as e:
         logger.error(f"Error in mesh status: {str(e)}")
         return jsonify({
@@ -241,20 +242,20 @@ def mesh_update():
     """Manually trigger mesh monitor update"""
     try:
         from app import mesh_monitor
-        
+
         if not mesh_monitor:
             return jsonify({
                 'success': False,
                 'message': 'Mesh monitoring not enabled'
             })
-        
+
         result = mesh_monitor.update()
         if result:
             # Save history
             from pathlib import Path
             mesh_history_path = Path("artifacts/mesh_history.json")
             mesh_monitor.save_history(mesh_history_path)
-            
+
             return jsonify({
                 'success': True,
                 'data': result
@@ -264,7 +265,7 @@ def mesh_update():
                 'success': False,
                 'message': 'No peer responses received'
             })
-            
+
     except Exception as e:
         logger.error(f"Error in mesh update: {str(e)}")
         return jsonify({
@@ -274,30 +275,26 @@ def mesh_update():
 
 @app.route('/analysis')
 def analysis():
-    """Detailed analysis view"""
+    """Analysis page with detailed GTI breakdown"""
     try:
         # Get recent analysis results
         coherence_results = AnalysisResult.query.filter_by(analysis_type='coherence')\
             .order_by(AnalysisResult.timestamp.desc()).limit(10).all()
-        
+
         phase_results = AnalysisResult.query.filter_by(analysis_type='phase_analysis')\
             .order_by(AnalysisResult.timestamp.desc()).limit(10).all()
-        
+
         bayesian_results = AnalysisResult.query.filter_by(analysis_type='bayesian')\
             .order_by(AnalysisResult.timestamp.desc()).limit(10).all()
-        
+
         return render_template('analysis.html',
                              coherence_results=coherence_results,
                              phase_results=phase_results,
                              bayesian_results=bayesian_results)
-        
+
     except Exception as e:
         logger.error(f"Error rendering analysis: {str(e)}")
-        flash(f"Error loading analysis: {str(e)}", 'error')
-        return render_template('analysis.html',
-                             coherence_results=[],
-                             phase_results=[],
-                             bayesian_results=[])
+        return f"Analysis page error: {str(e)}", 500
 
 @app.route('/api/ingest_data', methods=['POST'])
 def api_ingest_data():
@@ -305,36 +302,36 @@ def api_ingest_data():
     try:
         # Ingest data from all sources
         stream_data = data_ingestion.ingest_all_streams()
-        
+
         if not stream_data:
             return jsonify({
                 'success': False,
                 'message': 'No data was ingested from any source'
             }), 400
-        
+
         # Store ingested data in database
         for stream_type, data in stream_data.items():
             for timestamp, value in data[-10:]:  # Store only last 10 points to avoid overflow
                 # Convert timestamp to datetime
                 dt = datetime.fromtimestamp(timestamp)
-                
+
                 # Create new data point
                 data_point = DataStream()
                 data_point.stream_type = stream_type
                 data_point.timestamp = dt
                 data_point.value = value
-                
+
                 db.session.add(data_point)
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': f'Successfully ingested data from {len(stream_data)} streams',
             'streams': list(stream_data.keys()),
             'data_points': {k: len(v) for k, v in stream_data.items()}
         })
-        
+
     except Exception as e:
         logger.error(f"Error in data ingestion API: {str(e)}")
         db.session.rollback()
@@ -349,27 +346,27 @@ def api_run_analysis():
     try:
         # Get recent data from database
         cutoff_time = datetime.utcnow() - timedelta(hours=24)
-        
+
         stream_data = {}
         for stream_type in ['TAI', 'GNSS', 'VLBI', 'PTA']:
             data_points = DataStream.query.filter_by(stream_type=stream_type)\
                 .filter(DataStream.timestamp >= cutoff_time)\
                 .order_by(DataStream.timestamp).all()
-            
+
             if data_points:
                 stream_data[stream_type] = [
                     (dp.timestamp.timestamp(), dp.value) for dp in data_points
                 ]
-        
+
         if not stream_data:
             return jsonify({
                 'success': False,
                 'message': 'No recent data available for analysis'
             }), 400
-        
+
         # Run GTI pipeline
         results = pipeline.process_streams(stream_data)
-        
+
         # Store GTI calculation result
         gti_calc = GTICalculation()
         gti_calc.timestamp = datetime.fromisoformat(results['timestamp'].replace('Z', '+00:00'))
@@ -380,9 +377,9 @@ def api_run_analysis():
         gti_calc.bayes_factor = results['bayes_factor']
         gti_calc.time_to_overlap = results['time_to_overlap']
         gti_calc.alert_level = results['alert_level']
-        
+
         db.session.add(gti_calc)
-        
+
         # Store detailed analysis results
         for analysis_type, data in results['detailed_results'].items():
             analysis_result = AnalysisResult()
@@ -390,9 +387,9 @@ def api_run_analysis():
             analysis_result.analysis_type = analysis_type
             analysis_result.set_result_data(data)
             db.session.add(analysis_result)
-        
+
         db.session.commit()
-        
+
         # Serialize results with additional safety
         try:
             serialized_results = make_serializable(results)
@@ -410,12 +407,12 @@ def api_run_analysis():
                 'alert_level': str(results.get('alert_level', 'UNKNOWN')),
                 'timestamp': str(results.get('timestamp', datetime.utcnow().isoformat()))
             }
-        
+
         return jsonify({
             'success': True,
             'results': serialized_results
         })
-        
+
     except Exception as e:
         logger.error(f"Error in analysis API: {str(e)}")
         db.session.rollback()
@@ -431,11 +428,11 @@ def api_gti_history():
         # Get query parameters
         hours = request.args.get('hours', 24, type=int)
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Query GTI calculations
         gti_calcs = GTICalculation.query.filter(GTICalculation.timestamp >= cutoff_time)\
             .order_by(GTICalculation.timestamp).all()
-        
+
         # Format data for charting
         history_data = {
             'timestamps': [calc.timestamp.isoformat() for calc in gti_calcs],
@@ -444,12 +441,12 @@ def api_gti_history():
             'coherence_values': [calc.coherence_median for calc in gti_calcs],
             'alert_levels': [calc.alert_level for calc in gti_calcs]
         }
-        
+
         return jsonify({
             'success': True,
             'data': history_data
         })
-        
+
     except Exception as e:
         logger.error(f"Error in GTI history API: {str(e)}")
         return jsonify({
@@ -464,25 +461,25 @@ def api_stream_data(stream_type):
         # Get query parameters
         hours = request.args.get('hours', 24, type=int)
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Query stream data
         data_points = DataStream.query.filter_by(stream_type=stream_type.upper())\
             .filter(DataStream.timestamp >= cutoff_time)\
             .order_by(DataStream.timestamp).all()
-        
+
         # Format data
         stream_data = {
             'timestamps': [dp.timestamp.isoformat() for dp in data_points],
             'values': [dp.value for dp in data_points],
             'residuals': [dp.residual for dp in data_points if dp.residual is not None]
         }
-        
+
         return jsonify({
             'success': True,
             'stream_type': stream_type.upper(),
             'data': stream_data
         })
-        
+
     except Exception as e:
         logger.error(f"Error in stream data API: {str(e)}")
         return jsonify({
@@ -495,34 +492,34 @@ def api_update_configuration():
     """API endpoint to update configuration parameters"""
     try:
         data = request.get_json()
-        
+
         if not data or 'parameter_name' not in data or 'parameter_value' not in data:
             return jsonify({
                 'success': False,
                 'message': 'Missing required fields: parameter_name and parameter_value'
             }), 400
-        
+
         # Find or create configuration
         config = ProcessingConfiguration.query.filter_by(
             parameter_name=data['parameter_name']
         ).first()
-        
+
         if not config:
             config = ProcessingConfiguration()
             config.parameter_name = data['parameter_name']
-        
+
         config.set_value(data['parameter_value'])
         config.description = data.get('description', '')
         config.updated_at = datetime.utcnow()
-        
+
         db.session.add(config)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': f'Configuration {data["parameter_name"]} updated successfully'
         })
-        
+
     except Exception as e:
         logger.error(f"Error updating configuration: {str(e)}")
         db.session.rollback()
@@ -537,27 +534,27 @@ def api_forecast():
     try:
         # Get recent GTI calculations for trend analysis
         recent_gtis = GTICalculation.query.order_by(GTICalculation.timestamp.desc()).limit(50).all()
-        
+
         if len(recent_gtis) < 5:
             return jsonify({
                 'success': False,
                 'message': 'Insufficient data for forecasting'
             }), 400
-        
+
         # Simple trend analysis - calculate rate of change
         values = [g.gti_value for g in reversed(recent_gtis)]
         timestamps = [g.timestamp.timestamp() for g in reversed(recent_gtis)]
-        
+
         # Linear trend calculation
         if len(values) >= 2:
             time_diff = timestamps[-1] - timestamps[0]
             value_diff = values[-1] - values[0]
             trend_rate = value_diff / time_diff if time_diff > 0 else 0
-            
+
             # Project 1 hour ahead
             forecast_time = timestamps[-1] + 3600  # 1 hour
             forecast_value = values[-1] + (trend_rate * 3600)
-            
+
             forecast_data = {
                 'current_value': values[-1],
                 'forecast_value': forecast_value,
@@ -573,12 +570,12 @@ def api_forecast():
                 'trend_rate': 0,
                 'confidence': 'None'
             }
-        
+
         return jsonify({
             'success': True,
             'forecast': forecast_data
         })
-        
+
     except Exception as e:
         logger.error(f"Error in forecast API: {str(e)}")
         return jsonify({
@@ -595,7 +592,7 @@ def api_system_status():
         for stream_type in ['TAI', 'GNSS', 'VLBI', 'PTA']:
             latest = DataStream.query.filter_by(stream_type=stream_type)\
                 .order_by(DataStream.timestamp.desc()).first()
-            
+
             if latest:
                 age_minutes = (datetime.utcnow() - latest.timestamp).total_seconds() / 60
                 stream_status[stream_type] = {
@@ -611,7 +608,7 @@ def api_system_status():
                     'last_update_minutes_ago': None,
                     'data_points_24h': 0
                 }
-        
+
         # Check latest GTI calculation
         latest_gti = GTICalculation.query.order_by(GTICalculation.timestamp.desc()).first()
         gti_status = {
@@ -619,11 +616,11 @@ def api_system_status():
             'last_calculation_minutes_ago': (datetime.utcnow() - latest_gti.timestamp).total_seconds() / 60 if latest_gti else None,
             'current_alert_level': latest_gti.alert_level if latest_gti else 'UNKNOWN'
         }
-        
+
         # Overall system health
         healthy_streams = sum(1 for status in stream_status.values() if status['status'] == 'healthy')
         overall_status = 'healthy' if healthy_streams >= 2 else 'degraded' if healthy_streams >= 1 else 'critical'
-        
+
         return jsonify({
             'success': True,
             'system_status': {
@@ -633,7 +630,7 @@ def api_system_status():
                 'timestamp': datetime.utcnow().isoformat()
             }
         })
-        
+
     except Exception as e:
         logger.error(f"Error getting system status: {str(e)}")
         return jsonify({
@@ -652,18 +649,18 @@ def api_provenance():
     try:
         n = request.args.get('n', 50, type=int)
         provenance_file = 'data/_meta/provenance.jsonl'
-        
+
         if not os.path.exists(provenance_file):
             return jsonify({
                 'success': True,
                 'records': [],
                 'message': 'No provenance data yet'
             })
-        
+
         # Read last N lines
         with open(provenance_file, 'r') as f:
             lines = f.readlines()
-        
+
         # Get last N lines and parse JSON
         last_lines = lines[-n:] if len(lines) > n else lines
         records = []
@@ -672,13 +669,13 @@ def api_provenance():
                 records.append(json.loads(line.strip()))
             except json.JSONDecodeError:
                 continue
-        
+
         return jsonify({
             'success': True,
             'records': records,
             'total_records': len(lines)
         })
-        
+
     except Exception as e:
         logger.error(f"Error in provenance API: {str(e)}")
         return jsonify({
@@ -696,24 +693,24 @@ def api_ping():
                 'success': False,
                 'message': 'URL parameter required'
             }), 400
-        
+
         # Parse hostname and check against allowlist
         from urllib.parse import urlparse
         parsed = urlparse(url)
         hostname = parsed.hostname
-        
+
         if hostname not in ALLOWED_HOSTS:
             return jsonify({
                 'success': False,
                 'message': f'Host {hostname} not in allowlist'
             }), 400
-        
+
         # Resolve IP
         try:
             resolved_ip = socket.gethostbyname(hostname)
         except socket.gaierror:
             resolved_ip = None
-        
+
         # Try HEAD first, fallback to GET
         start_time = time.time()
         try:
@@ -722,9 +719,9 @@ def api_ping():
                 response = requests.get(url, timeout=10, stream=True)
         except:
             response = requests.get(url, timeout=10, stream=True)
-        
+
         elapsed_ms = (time.time() - start_time) * 1000
-        
+
         # Extract relevant headers
         headers = {
             'Date': response.headers.get('Date'),
@@ -733,7 +730,7 @@ def api_ping():
             'Content-Length': response.headers.get('Content-Length'),
             'Last-Modified': response.headers.get('Last-Modified')
         }
-        
+
         return jsonify({
             'success': True,
             'status_code': response.status_code,
@@ -742,7 +739,7 @@ def api_ping():
             'headers': headers,
             'url': url
         })
-        
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -766,26 +763,26 @@ def api_logs():
     try:
         k = request.args.get('k', 200, type=int)
         log_file = 'logs/app.log'
-        
+
         if not os.path.exists(log_file):
             return jsonify({
                 'success': True,
                 'logs': [],
                 'message': 'No log file found'
             })
-        
+
         # Read last K lines
         with open(log_file, 'r') as f:
             lines = f.readlines()
-        
+
         last_lines = lines[-k:] if len(lines) > k else lines
-        
+
         return jsonify({
             'success': True,
             'logs': [line.strip() for line in last_lines],
             'total_lines': len(lines)
         })
-        
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -802,31 +799,31 @@ def api_raw():
                 'success': False,
                 'message': 'Path parameter required'
             }), 400
-        
+
         # Security: ensure path is under data/
         if not path.startswith('data/'):
             return jsonify({
                 'success': False,
                 'message': 'Access denied: path must be under data/'
             }), 403
-        
+
         # Security: prevent directory traversal
         if '..' in path or path.startswith('/'):
             return jsonify({
                 'success': False,
                 'message': 'Access denied: invalid path'
             }), 403
-        
+
         if not os.path.exists(path):
             return jsonify({
                 'success': False,
                 'message': 'File not found'
             }), 404
-        
+
         # Serve file content
         with open(path, 'rb') as f:
             content = f.read()
-        
+
         # Try to determine if it's text
         try:
             text_content = content.decode('utf-8')
@@ -846,7 +843,7 @@ def api_raw():
                 'size': len(content),
                 'path': path
             })
-        
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -864,7 +861,7 @@ def api_pull():
             text=True,
             timeout=60
         )
-        
+
         if result.returncode == 0:
             # Parse any JSON output or just return success
             return jsonify({
@@ -882,7 +879,7 @@ def api_pull():
                 'stdout': result.stdout,
                 'exit_code': result.returncode
             }), 500
-        
+
     except subprocess.TimeoutExpired:
         return jsonify({
             'ok': False,
@@ -900,13 +897,13 @@ def api_forecast_history():
     try:
         # Get recent GTI calculations for historical analysis
         recent_gtis = GTICalculation.query.order_by(GTICalculation.timestamp.desc()).limit(100).all()
-        
+
         if len(recent_gtis) < 10:
             return jsonify({
                 'success': False,
                 'message': 'Insufficient historical data'
             }), 400
-        
+
         # Format historical data
         history = []
         for gti in reversed(recent_gtis):
@@ -917,7 +914,7 @@ def api_forecast_history():
                 'coherence': gti.coherence_median,
                 'alert_level': gti.alert_level
             })
-        
+
         return jsonify({
             'success': True,
             'history': history,
@@ -927,7 +924,7 @@ def api_forecast_history():
                 'latest_gti': history[-1]['gti_value'] if history else 0
             }
         })
-        
+
     except Exception as e:
         logger.error(f"Error in forecast history API: {str(e)}")
         return jsonify({
@@ -966,13 +963,13 @@ def handle_exception(e):
     global _last_exception_text
     _last_exception_text = traceback.format_exc()
     logger.error(f"Unhandled exception: {_last_exception_text}")
-    
+
     if hasattr(e, 'code') and e.code == 404:
         return render_template('dashboard.html', 
                              latest_gti=None,
                              recent_gtis=[],
                              stream_status={}), 404
-    
+
     db.session.rollback()
     return jsonify({
         'success': False,
