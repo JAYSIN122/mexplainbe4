@@ -210,6 +210,8 @@ def configuration():
 def mesh_status():
     """Get mesh network monitoring status"""
     try:
+        from app import mesh_monitor
+        
         if not mesh_monitor:
             return jsonify({
                 'active': False,
@@ -238,6 +240,8 @@ def mesh_status():
 def mesh_update():
     """Manually trigger mesh monitor update"""
     try:
+        from app import mesh_monitor
+        
         if not mesh_monitor:
             return jsonify({
                 'success': False,
