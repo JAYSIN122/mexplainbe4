@@ -18,11 +18,11 @@ class DataIngestion:
             'VLBI': self._ingest_vlbi_data,
             'PTA': self._ingest_pta_data
         }
-    
+
     def ingest_all_streams(self):
         """Ingest data from all available sources"""
         stream_data = {}
-        
+
         for stream_type, ingest_func in self.data_sources.items():
             try:
                 data = ingest_func()
@@ -33,19 +33,19 @@ class DataIngestion:
                     logger.warning(f"No data available for {stream_type}")
             except Exception as e:
                 logger.error(f"Error ingesting {stream_type} data: {str(e)}")
-        
+
         return stream_data
-    
+
     def _ingest_tai_data(self):
         """Ingest TAI/UTC offset data from BIPM files"""
         # Read from real BIPM data files
         bipm_file = "data/bipm/utcrlab.all"
         if os.path.exists(bipm_file):
-            return self._parse_bipm_data(bimp_file)
+            return self._parse_bipm_data(bipm_file)
         else:
             logger.warning("No BIPM data file found")
             return []
-    
+
     def _ingest_gnss_data(self):
         """Ingest GNSS clock data from IGS products"""
         # Look for IGS clock files or processed GNSS data
@@ -55,7 +55,7 @@ class DataIngestion:
         else:
             logger.warning("No GNSS data file found")
             return []
-    
+
     def _ingest_vlbi_data(self):
         """Ingest VLBI delay residuals"""
         # Look for VLBI data files
@@ -65,7 +65,7 @@ class DataIngestion:
         else:
             logger.warning("No VLBI data file found")
             return []
-    
+
     def _ingest_pta_data(self):
         """Ingest Pulsar Timing Array TOA residuals"""
         # Look for PTA data files
@@ -75,7 +75,7 @@ class DataIngestion:
         else:
             logger.warning("No PTA data file found")
             return []
-    
+
     def _parse_bipm_data(self, filepath):
         """Parse BIPM UTC(lab) data"""
         try:
@@ -100,7 +100,7 @@ class DataIngestion:
         except Exception as e:
             logger.error(f"Error parsing BIPM data: {str(e)}")
             return []
-    
+
     def _load_synthetic_data(self, stream_type):
         """Load data from CSV files only - no synthetic generation"""
         try:
