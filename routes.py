@@ -913,52 +913,7 @@ def api_eta():
 
 
 
-@app.route('/api/ping')
-def api_ping():
-    """Ping allowed hosts and return connection info"""
-    url = request.args.get('url')
-    if not url:
-        return jsonify({"ok": False, "error": "Missing url parameter"}), 400
 
-    try:
-        parsed = urlparse(url)
-        if parsed.hostname not in ALLOWED_HOSTS:
-            return jsonify({"ok": False, "error": f"Host {parsed.hostname} not allowed"}), 400
-
-        start_time = time.time()
-
-        # Resolve IP
-        try:
-            resolved_ip = socket.gethostbyname(parsed.hostname)
-        except socket.gaierror:
-            resolved_ip = None
-
-        # Try HEAD first, fallback to GET
-        try:
-            response = requests.head(url, timeout=10, allow_redirects=True)
-        except:
-            response = requests.get(url, timeout=10, stream=True)
-
-        elapsed_ms = (time.time() - start_time) * 1000
-
-        headers = {
-            'Date': response.headers.get('Date'),
-            'ETag': response.headers.get('ETag'),
-            'Last-Modified': response.headers.get('Last-Modified'),
-            'Content-Length': response.headers.get('Content-Length'),
-            'Content-Type': response.headers.get('Content-Type')
-        }
-
-        return jsonify({
-            "ok": True,
-            "status_code": response.status_code,
-            "elapsed_ms": elapsed_ms,
-            "resolved_ip": resolved_ip,
-            "headers": headers
-        })
-
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route('/api/last_trace')
 def api_last_trace():
