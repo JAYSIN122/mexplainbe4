@@ -2,7 +2,7 @@ modules = ["nodejs-20", "python-3.11", "postgresql-16"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["cairo", "ffmpeg-full", "freetype", "ghostscript", "glibcLocales", "gobject-introspection", "gtk3", "hyperledger-fabric", "libxcrypt", "libyaml", "openssl", "pkg-config", "postgresql", "qhull", "run", "tcl", "tk", "xsimd"]
+packages = ["cairo", "ffmpeg-full", "freetype", "ghostscript", "glibcLocales", "gobject-introspection", "gtk3", "hyperledger-fabric", "libxcrypt", "libyaml", "openssl", "pkg-config", "postgresql", "qhull", "run", "tcl", "tk", "xsimd", "undollar"]
 
 [deployment]
 deploymentTarget = "autoscale"

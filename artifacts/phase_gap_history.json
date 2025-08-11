@@ -202,6 +202,125 @@
       "source": "http-mesh",
       "peer_count": 6,
       "iqr_ms": 403.5130600023251
+    },
+    {
+      "as_of_utc": "2025-08-11T12:12:26.198089Z",
+      "phase_deg": -0.002088731289574417,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 302.6232349989536
+    },
+    {
+      "as_of_utc": "2025-08-11T12:13:27.226595Z",
+      "phase_deg": -0.002142038894786648,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 253.13981998860743
+    },
+    {
+      "as_of_utc": "2025-08-11T12:14:28.289341Z",
+      "phase_deg": -0.002653234185416545,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 403.02046498904934
+    },
+    {
+      "as_of_utc": "2025-08-11T12:15:29.362535Z",
+      "phase_deg": -0.003166000664553176,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 379.64045499258486
+    },
+    {
+      "as_of_utc": "2025-08-11T12:16:30.526255Z",
+      "phase_deg": -0.002914582486470437,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 503.59155449314227
+    },
+    {
+      "as_of_utc": "2025-08-11T12:17:31.853550Z",
+      "phase_deg": -0.003526872310384361,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 487.3079494897678
+    },
+    {
+      "as_of_utc": "2025-08-11T12:18:32.997537Z",
+      "phase_deg": -0.0030814701645469757,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 727.9803649865119
+    },
+    {
+      "as_of_utc": "2025-08-11T12:19:34.190820Z",
+      "phase_deg": -0.0023470616635305266,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 571.9630245036342
+    },
+    {
+      "as_of_utc": "2025-08-11T12:20:35.194441Z",
+      "phase_deg": -0.002490748926046192,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 322.9961750093326
+    },
+    {
+      "as_of_utc": "2025-08-11T12:21:36.316634Z",
+      "phase_deg": -0.002962657247928159,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 380.4561805094489
+    },
+    {
+      "as_of_utc": "2025-08-11T12:22:37.604090Z",
+      "phase_deg": -0.0030971388104089922,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 367.78726999359026
+    },
+    {
+      "as_of_utc": "2025-08-11T12:23:38.713150Z",
+      "phase_deg": -0.001861778853155696,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 706.6541195016027
+    },
+    {
+      "as_of_utc": "2025-08-11T12:24:39.746938Z",
+      "phase_deg": -0.002124408644767567,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 705.1395899990638
+    },
+    {
+      "as_of_utc": "2025-08-11T12:25:40.805709Z",
+      "phase_deg": -0.0023811236031420664,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 727.4427850016885
+    },
+    {
+      "as_of_utc": "2025-08-11T12:26:42.061857Z",
+      "phase_deg": -0.0031892922260077475,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 712.0594695090923
+    },
+    {
+      "as_of_utc": "2025-08-11T12:27:43.404863Z",
+      "phase_deg": -0.002064284018748271,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 396.5410904891621
+    },
+    {
+      "as_of_utc": "2025-08-11T12:28:44.526158Z",
+      "phase_deg": -0.003190275746907189,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 511.40237501520295
     }
   ]
 }

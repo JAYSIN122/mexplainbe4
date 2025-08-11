@@ -7,9 +7,14 @@
     "start": "node index.js",
     "dev": "node index.js"
   },
-  "dependencies": {},
-  "devDependencies": {},
-  "keywords": ["temporal", "monitoring", "analysis"],
+  "keywords": [
+    "temporal",
+    "monitoring",
+    "analysis"
+  ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "package-lock.json": "^1.0.0"
+  }
 }
