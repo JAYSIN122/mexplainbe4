@@ -36,19 +36,26 @@ def download_with_provenance(url, out_path):
     
     try:
         # Make request with timeout
-        response = requests.get(url, timeout=30, stream=True)
+        response = requests.get(url, timeout=30)
         elapsed_ms = (time.time() - start_time) * 1000
-        
+
         # Create output directory if needed
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        
-        # Download and hash content
-        sha256_hash = hashlib.sha256()
-        with open(out_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
-                    sha256_hash.update(chunk)
+
+        # Download, handle JSON if needed, and hash content
+        content_type = response.headers.get('Content-Type', '')
+        if 'application/json' in content_type or url.endswith('.json'):
+            data = response.json()
+            text = json.dumps(data, ensure_ascii=False, indent=2)
+            content_bytes = text.encode('utf-8')
+            with open(out_path, 'w', encoding='utf-8') as f:
+                f.write(text)
+        else:
+            content_bytes = response.content
+            with open(out_path, 'wb') as f:
+                f.write(content_bytes)
+
+        sha256_hash = hashlib.sha256(content_bytes)
         
         # Extract relevant headers
         headers = {
@@ -105,8 +112,8 @@ def fetch_all():
             'out_path': 'data/bipm/utcrlab.all'
         },
         {
-            'url': 'https://datacenter.iers.org/data/9/dut1.txt',
-            'out_path': 'data/iers/dut1.txt'
+            'url': 'https://datacenter.iers.org/products/eop/rapid/standard/json/finals2000A.data.json',
+            'out_path': 'data/iers/finals2000A.data.json'
         }
     ]
     
