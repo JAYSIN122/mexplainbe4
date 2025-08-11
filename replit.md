@@ -1,5 +1,5 @@
 # Overview
-This project is a Flask-based temporal anomaly detection system, primarily focused on Gravitational Time Interferometry (GTI). It processes timing data from various sources (BIPM, TAI, GNSS, VLBI, PTA) to identify and analyze temporal anomalies and forecast potential timeline convergence events, aiming to provide insights into global timing synchronization. The system features a web dashboard for monitoring, advanced signal processing, and the capability to generate synthetic data. A proposed extension involves integrating a decentralized NTP-based mesh network to independently detect global timing anomalies, offering a cross-validation mechanism for the GTI pipeline's findings.
+This project is a Flask-based temporal anomaly detection system, primarily focused on Gravitational Time Interferometry (GTI). It processes timing data from various sources (BIPM, TAI, GNSS, VLBI, PTA) to identify and analyze temporal anomalies and forecast potential timeline convergence events, aiming to provide insights into global timing synchronization. The system features a web dashboard for monitoring, and advanced signal processing. A proposed extension involves integrating a decentralized NTP-based mesh network to independently detect global timing anomalies, offering a cross-validation mechanism for the GTI pipeline's findings.
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
@@ -22,7 +22,7 @@ Preferred communication style: Simple, everyday language.
 - **GTI Pipeline**: 8-step process for multitaper spectral analysis, coherence, and phase gap detection.
 - **Signal Processing**: Utilizes `scipy` for filtering, Hilbert transforms, and PCA.
 - **Bayesian Analysis**: For model selection and parameter estimation.
-- **Data Ingestion**: Supports multi-source timing data and synthetic data generation.
+- **Data Ingestion**: Supports multi-source timing data. The system requires live or archival sources and fails if none are available; it does not fall back to placeholders.
 
 ## Database Schema
 - **Core Registries**: `source_registry`, `ingest_run`.
@@ -74,3 +74,5 @@ Preferred communication style: Simple, everyday language.
 - **IGS Products**: GNSS clock data.
 - **VLBI Networks**: Interferometry timing data.
 - **Pulsar Timing Arrays**: Astronomical timing references.
+
+**Operational Note**: The system relies solely on live or archival data. If these sources are unavailable, it fails instead of producing placeholder outputs.
