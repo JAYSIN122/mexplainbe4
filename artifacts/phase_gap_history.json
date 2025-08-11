@@ -391,6 +391,41 @@
       "source": "http-mesh",
       "peer_count": 6,
       "iqr_ms": 753.3655900056203
+    },
+    {
+      "as_of_utc": "2025-08-11T12:43:15.967077Z",
+      "phase_deg": -0.0018974452687531068,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 703.6697005100214
+    },
+    {
+      "as_of_utc": "2025-08-11T12:44:17.104776Z",
+      "phase_deg": -0.002409629184362127,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 653.2410955047337
+    },
+    {
+      "as_of_utc": "2025-08-11T12:44:23.558699Z",
+      "phase_deg": -0.0031806037166453903,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 304.39269550668905
+    },
+    {
+      "as_of_utc": "2025-08-11T12:45:24.602240Z",
+      "phase_deg": -0.0034593605197607816,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 431.99848450454897
+    },
+    {
+      "as_of_utc": "2025-08-11T12:45:42.670432Z",
+      "phase_deg": -0.0036721030708304473,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 361.4641249986896
     }
   ]
 }

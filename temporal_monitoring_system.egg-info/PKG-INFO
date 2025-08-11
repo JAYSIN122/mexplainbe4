@@ -21,6 +21,7 @@ Requires-Dist: beautifulsoup4>=4.12.0
 Requires-Dist: python-dateutil>=2.8.0
 Requires-Dist: email-validator>=2.2.0
 Requires-Dist: pyyaml>=6.0
+Requires-Dist: fastapi>=0.116.1
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0.0; extra == "dev"
 Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
