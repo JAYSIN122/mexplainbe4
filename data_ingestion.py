@@ -68,11 +68,11 @@ class DataIngestion:
         env_var = f"INGEST_{source_type.upper()}"
         if os.getenv(env_var) == "1":
             return True
-        
+
         # Fall back to config file if available
         if config and hasattr(config, 'is_ingestion_enabled'):
             return config.is_ingestion_enabled(source_type)
-        
+
         # Default to disabled if no config available
         return False
 
@@ -99,10 +99,10 @@ class DataIngestion:
     def _ingest_tai_data(self):
         """Ingest TAI/UTC offset data from REAL BIPM files ONLY"""
         bipm_file = "data/bipm/utcrlab.all"
-        if os.path.exists(bipm_file):
-            return self._parse_bipm_data(bipm_file)
+        if os.path.exists(bipm_file) and os.path.getsize(bimp_file) > 0:
+            return self._parse_bipm_data(bimp_file)
         else:
-            logger.info("No BIPM data file found - no data returned")
+            logger.info("No real BIPM data file found or file is empty - returning empty")
             return []
 
     def _ingest_gnss_data(self):
@@ -175,26 +175,26 @@ class DataIngestion:
         try:
             # IGS Final Clock Products (sp3 format)
             base_url = "https://cddis.nasa.gov/archive/gnss/products"
-            
+
             # Get current GPS week
             gps_epoch = datetime(1980, 1, 6)
             now = datetime.utcnow()
             days_since_epoch = (now - gps_epoch).days
             gps_week = days_since_epoch // 7
-            
+
             # Fetch recent final products (typically 2 weeks behind)
             url = f"{base_url}/{gps_week-2:04d}/igs{gps_week-2:04d}7.clk.Z"
-            
+
             logger.info(f"Fetching IGS clock data from: {url}")
             response = requests.get(url, timeout=30)
-            
+
             if response.status_code == 200:
                 # Parse IGS clock format and save to CSV
                 return self._parse_igs_clock_file(response.content)
             else:
                 logger.warning(f"Failed to fetch IGS data: {response.status_code}")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Error fetching IGS data: {str(e)}")
             return False
@@ -204,19 +204,19 @@ class DataIngestion:
         try:
             # IVS database for EOP and delays
             base_url = "https://ivscc.gsfc.nasa.gov/products-data/data.html"
-            
+
             # Fetch recent session results
             url = f"{base_url}/eops/eop.txt"
-            
+
             logger.info(f"Fetching IVS VLBI data from: {url}")
             response = requests.get(url, timeout=30)
-            
+
             if response.status_code == 200:
                 return self._parse_ivs_eop_file(response.text)
             else:
                 logger.warning(f"Failed to fetch IVS data: {response.status_code}")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Error fetching IVS data: {str(e)}")
             return False
@@ -226,19 +226,19 @@ class DataIngestion:
         try:
             # NANOGrav public data releases
             base_url = "https://data.nanograv.org"
-            
+
             # Fetch recent timing residuals
             url = f"{base_url}/releases/15yr/timing_residuals.txt"
-            
+
             logger.info(f"Fetching NANOGrav PTA data from: {url}")
             response = requests.get(url, timeout=30)
-            
+
             if response.status_code == 200:
                 return self._parse_nanograv_residuals(response.text)
             else:
                 logger.warning(f"Failed to fetch NANOGrav data: {response.status_code}")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Error fetching PTA data: {str(e)}")
             return False
@@ -248,11 +248,11 @@ class DataIngestion:
         try:
             # Create output directory
             Path("data/gnss").mkdir(parents=True, exist_ok=True)
-            
+
             # Simple parsing - extract satellite clock offsets
             lines = content.decode('utf-8').splitlines()
             data_points = []
-            
+
             for line in lines:
                 if line.startswith('AS '):  # Clock record
                     parts = line.split()
@@ -262,14 +262,14 @@ class DataIngestion:
                         offset_ns = float(parts[5]) * 1e9  # Convert to nanoseconds
                         timestamp = (mjd - 40587.0) * 86400.0
                         data_points.append([timestamp, offset_ns])
-            
+
             # Save to CSV
             if data_points:
                 np.savetxt("data/gnss/clock_data.csv", data_points, delimiter=',')
                 logger.info(f"Saved {len(data_points)} GNSS data points")
                 return True
             return False
-            
+
         except Exception as e:
             logger.error(f"Error parsing IGS clock data: {str(e)}")
             return False
@@ -279,14 +279,14 @@ class DataIngestion:
         try:
             # Create output directory
             Path("data/vlbi").mkdir(parents=True, exist_ok=True)
-            
+
             lines = content.splitlines()
             data_points = []
-            
+
             for line in lines:
                 if not line.strip() or line.startswith('#'):
                     continue
-                    
+
                 parts = line.split()
                 if len(parts) >= 8:
                     # Extract MJD and UT1-UTC (proxy for timing delays)
@@ -294,14 +294,14 @@ class DataIngestion:
                     ut1_utc_ms = float(parts[6]) * 1000  # Convert to milliseconds
                     timestamp = (mjd - 40587.0) * 86400.0
                     data_points.append([timestamp, ut1_utc_ms])
-            
+
             # Save to CSV
             if data_points:
                 np.savetxt("data/vlbi/delays.csv", data_points, delimiter=',')
                 logger.info(f"Saved {len(data_points)} VLBI data points")
                 return True
             return False
-            
+
         except Exception as e:
             logger.error(f"Error parsing IVS data: {str(e)}")
             return False
@@ -311,14 +311,14 @@ class DataIngestion:
         try:
             # Create output directory
             Path("data/pta").mkdir(parents=True, exist_ok=True)
-            
+
             lines = content.splitlines()
             data_points = []
-            
+
             for line in lines:
                 if not line.strip() or line.startswith('#'):
                     continue
-                    
+
                 parts = line.split()
                 if len(parts) >= 4:
                     # Extract MJD and residual
@@ -326,14 +326,14 @@ class DataIngestion:
                     residual_us = float(parts[3]) * 1e6  # Convert to microseconds
                     timestamp = (mjd - 40587.0) * 86400.0
                     data_points.append([timestamp, residual_us])
-            
+
             # Save to CSV
             if data_points:
                 np.savetxt("data/pta/residuals.csv", data_points, delimiter=',')
                 logger.info(f"Saved {len(data_points)} PTA data points")
                 return True
             return False
-            
+
         except Exception as e:
             logger.error(f"Error parsing PTA data: {str(e)}")
             return False

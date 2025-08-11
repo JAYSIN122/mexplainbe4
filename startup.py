@@ -75,13 +75,8 @@ def initialize_database():
     return True
 
 def generate_initial_data():
-    """Generate initial synthetic data if none exists"""
-    try:
-        from generate_synthetic import generate_all_data
-        generate_all_data()
-        print("✅ Initial synthetic data generated")
-    except Exception as e:
-        print(f"⚠️  Synthetic data generation skipped: {e}")
+    """Skip synthetic data generation - real data sources only"""
+    print("⚠️  Synthetic data generation disabled - using real data sources only")n skipped: {e}")
 
 def check_system_status():
     """Perform basic system health checks"""
