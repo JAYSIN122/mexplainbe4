@@ -64,6 +64,7 @@ class DataIngestion:
     def ingest_all_streams(self):
         """Ingest data from all available sources"""
         stream_data = {}
+        errors = {}
 
         for disabled in getattr(self, 'disabled_sources', []):
             logger.info(f"{disabled} stream disabled; skipping ingestion")
@@ -71,13 +72,17 @@ class DataIngestion:
         for stream_type, ingest_func in self.data_sources.items():
             try:
                 data = ingest_func()
-                if data:
-                    stream_data[stream_type] = data
-                    logger.info(f"Successfully ingested {len(data)} points from {stream_type}")
-                else:
-                    logger.warning(f"No data available for {stream_type}")
+                stream_data[stream_type] = data
+                logger.info(
+                    f"Successfully ingested {len(data)} points from {stream_type}"
+                )
             except Exception as e:
+                errors[stream_type] = str(e)
                 logger.error(f"Error ingesting {stream_type} data: {str(e)}")
+
+        if errors:
+            missing = ", ".join(errors.keys())
+            raise RuntimeError(f"Failed to ingest required streams: {missing}")
 
         return stream_data
 
@@ -85,40 +90,56 @@ class DataIngestion:
         """Ingest TAI/UTC offset data from REAL BIPM files ONLY"""
         bipm_file = "data/bipm/utcrlab.all"
         if os.path.exists(bipm_file) and os.path.getsize(bipm_file) > 0:
-            return self._parse_bipm_data(bipm_file)
+            data = self._parse_bipm_data(bipm_file)
+            if not data:
+                raise ValueError("Parsed BIPM data was empty")
+            return data
         else:
-            logger.info("No real BIPM data file found or file is empty - returning empty")
-            return []
+            msg = "No real BIPM data file found or file is empty"
+            logger.error(msg)
+            raise FileNotFoundError(msg)
 
     def _ingest_gnss_data(self):
         """Ingest GNSS clock data from IGS products"""
         # Try real IGS data sources first
         if self._fetch_igs_clock_data():
             gnss_file = "data/gnss/clock_data.csv"
-            return self._load_csv_data(gnss_file)
+            data = self._load_csv_data(gnss_file)
+            if not data:
+                raise ValueError(f"Failed to load GNSS data from {gnss_file}")
+            return data
         else:
-            logger.info("No GNSS data available from IGS sources")
-            return []
+            msg = "No GNSS data available from IGS sources"
+            logger.error(msg)
+            raise RuntimeError(msg)
 
     def _ingest_vlbi_data(self):
         """Ingest VLBI delay residuals"""
         # Try real IVS VLBI data sources first
         if self._fetch_ivs_vlbi_data():
             vlbi_file = "data/vlbi/delays.csv"
-            return self._load_csv_data(vlbi_file)
+            data = self._load_csv_data(vlbi_file)
+            if not data:
+                raise ValueError(f"Failed to load VLBI data from {vlbi_file}")
+            return data
         else:
-            logger.info("No VLBI data available from IVS sources")
-            return []
+            msg = "No VLBI data available from IVS sources"
+            logger.error(msg)
+            raise RuntimeError(msg)
 
     def _ingest_pta_data(self):
         """Ingest Pulsar Timing Array TOA residuals"""
         # Try real PTA consortium data sources first
         if self._fetch_pta_data():
             pta_file = "data/pta/residuals.csv"
-            return self._load_csv_data(pta_file)
+            data = self._load_csv_data(pta_file)
+            if not data:
+                raise ValueError(f"Failed to load PTA data from {pta_file}")
+            return data
         else:
-            logger.info("No PTA data available from consortium sources")
-            return []
+            msg = "No PTA data available from consortium sources"
+            logger.error(msg)
+            raise RuntimeError(msg)
 
     def _parse_bipm_data(self, filepath):
         """Parse BIPM UTC(lab) data"""
@@ -322,3 +343,4 @@ class DataIngestion:
         except Exception as e:
             logger.error(f"Error parsing PTA data: {str(e)}")
             return False
+
