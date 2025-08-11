@@ -3,7 +3,11 @@
 import os, time, math, socket, ssl, http.client
 from datetime import datetime, timezone
 from statistics import median
-import psycopg
+try:
+    import psycopg
+    HAS_PSYCOPG = True
+except ImportError:
+    HAS_PSYCOPG = False
 import logging
 from urllib.parse import urlparse
 
@@ -78,13 +82,30 @@ def _fetch_date_head(url:str, timeout=5.0):
         "offset_ms": offset_s * 1000.0
     }
 
-def _save_sample(conn, s, ok=True):
-    with conn.cursor() as cur:
-        cur.execute(
-            "INSERT INTO mesh_sample (peer, method, rtt_ms, server_date, local_date, offset_ms, ok) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s)",
-            (s["peer"], "http-date", float(s["rtt_ms"]), s["server_date"], s["local_date"], float(s["offset_ms"]), ok)
-        )
+def _save_sample(s, ok=True):
+    """Save sample using SQLAlchemy - will be called from main app context"""
+    try:
+        # Import here to avoid circular imports
+        from app import app, db
+        from models import MeshObservation
+        import json
+        
+        with app.app_context():
+            obs = MeshObservation(
+                peer=s["peer"],
+                protocol='http-date',
+                offset=s["offset_ms"] / 1000.0,  # Convert to seconds
+                rtt_ms=s["rtt_ms"],
+                server_time=s["server_date"],
+                details=json.dumps({
+                    'local_date': s["local_date"].isoformat(),
+                    'ok': ok
+                })
+            )
+            db.session.add(obs)
+            db.session.commit()
+    except Exception as e:
+        log.error("Failed to save sample to database: %s", e)
 
 def poll_once():
     results = []
@@ -112,22 +133,67 @@ def poll_once():
         "samples": results
     }
 
+def _update_phase_gap_history(summary):
+    """Update phase gap history for dashboard integration"""
+    try:
+        from pathlib import Path
+        import json
+        
+        # Convert offset to phase gap (assuming 24-hour reference period)
+        offset_seconds = summary["offset_ms_median"] / 1000.0
+        phase_gap_degrees = (offset_seconds / 86400.0) * 360.0
+        
+        # Load existing history
+        history_path = Path("artifacts/phase_gap_history.json")
+        if history_path.exists():
+            data = json.loads(history_path.read_text())
+            history = data.get("history", [])
+        else:
+            history = []
+        
+        # Add new entry
+        timestamp = _now_utc().isoformat().replace("+00:00", "Z")
+        new_entry = {
+            "as_of_utc": timestamp,
+            "phase_deg": phase_gap_degrees,
+            "source": "http-mesh",
+            "peer_count": summary["n"],
+            "iqr_ms": summary["offset_ms_iqr"]
+        }
+        
+        history.append(new_entry)
+        
+        # Keep last 1000 entries
+        if len(history) > 1000:
+            history = history[-1000:]
+        
+        # Save back
+        history_path.parent.mkdir(exist_ok=True)
+        history_path.write_text(json.dumps({"history": history}, indent=2))
+        
+        log.debug("Updated phase gap history: %.6f degrees", phase_gap_degrees)
+        
+    except Exception as e:
+        log.error("Failed to update phase gap history: %s", e)
+
 def run_forever():
-    if not DB_URL:
-        log.error("DATABASE_URL missing")
-        return
-    with psycopg.connect(DB_URL, autocommit=True) as conn:
-        log.info("HTTP-Date mesh running with %d peers, interval=%ss", len(PEERS), INTERVAL)
-        while True:
-            summary = poll_once()
-            if summary:
-                for s in summary["samples"]:
-                    try:
-                        _save_sample(conn, s, ok=True)
-                    except Exception as e:
-                        log.error("DB insert failed: %s", e)
-                log.info("Mesh summary: n=%d median=%.3fms iqr=%.3fms",
-                         summary["n"], summary["offset_ms_median"], summary["offset_ms_iqr"])
-            else:
-                log.warning("No HTTP-Date peers succeeded this round")
-            time.sleep(INTERVAL)
+    log.info("HTTP-Date mesh running with %d peers, interval=%ss", len(PEERS), INTERVAL)
+    while True:
+        summary = poll_once()
+        if summary:
+            for s in summary["samples"]:
+                try:
+                    _save_sample(s, ok=True)
+                except Exception as e:
+                    log.error("DB insert failed: %s", e)
+            log.info("Mesh summary: n=%d median=%.3fms iqr=%.3fms",
+                     summary["n"], summary["offset_ms_median"], summary["offset_ms_iqr"])
+            
+            # Also update phase gap history for dashboard integration
+            try:
+                _update_phase_gap_history(summary)
+            except Exception as e:
+                log.error("Failed to update phase gap history: %s", e)
+        else:
+            log.warning("No HTTP-Date peers succeeded this round")
+        time.sleep(INTERVAL)

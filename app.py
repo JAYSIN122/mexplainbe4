@@ -98,42 +98,53 @@ with app.app_context():
 
         # Initialize mesh monitor if enabled
         if app.config.get('USE_MESH_MONITOR'):
-            try:
-                from mesh_monitor import create_mesh_monitor
-                from pathlib import Path
-                
-                peers = app.config.get('MESH_PEERS', [])
-                if isinstance(peers, str):
-                    # Handle string representation of list
-                    import ast
-                    try:
-                        peers = ast.literal_eval(peers)
-                    except:
-                        peers = peers.split(',')
-                
-                interval = int(app.config.get('MESH_INTERVAL', 60))
-                mesh_monitor = create_mesh_monitor(peers, interval)
-                
-                # Load existing history if available
-                mesh_history_path = Path("artifacts/mesh_history.json")
-                mesh_monitor.load_history(mesh_history_path)
-                
-                logger.info(f"Mesh monitor initialized with {len(peers)} peers, interval: {interval}s")
-                
-                # Test initial connectivity
-                if hasattr(mesh_monitor, 'poll_peers'):
-                    initial_test = mesh_monitor.poll_peers()
-                    if not initial_test:
-                        logger.warning("Initial mesh monitor connectivity test failed - network may be restricted")
-                    else:
-                        logger.info(f"Initial mesh monitor test successful - {len(initial_test)} peers responded")
-                        
-            except ImportError:
-                logger.warning("ntplib not available - mesh monitoring disabled")
-                mesh_monitor = None
-            except Exception as e:
-                logger.error(f"Failed to initialize mesh monitor (continuing without it): {e}")
-                mesh_monitor = None
+            # Start HTTP mesh monitor in background thread
+            import os, threading
+            from mesh_http_date import run_forever as mesh_http_run
+            
+            if os.getenv("MESH_USE_HTTP", "true").lower() == "true":
+                logger.info("Starting HTTP mesh monitor in background thread")
+                t = threading.Thread(target=mesh_http_run, daemon=True)
+                t.start()
+                mesh_monitor = None  # HTTP mesh runs independently
+            else:
+                # Fallback to NTP mesh (original code)
+                try:
+                    from mesh_monitor import create_mesh_monitor
+                    from pathlib import Path
+                    
+                    peers = app.config.get('MESH_PEERS', [])
+                    if isinstance(peers, str):
+                        # Handle string representation of list
+                        import ast
+                        try:
+                            peers = ast.literal_eval(peers)
+                        except:
+                            peers = peers.split(',')
+                    
+                    interval = int(app.config.get('MESH_INTERVAL', 60))
+                    mesh_monitor = create_mesh_monitor(peers, interval)
+                    
+                    # Load existing history if available
+                    mesh_history_path = Path("artifacts/mesh_history.json")
+                    mesh_monitor.load_history(mesh_history_path)
+                    
+                    logger.info(f"NTP mesh monitor initialized with {len(peers)} peers, interval: {interval}s")
+                    
+                    # Test initial connectivity
+                    if hasattr(mesh_monitor, 'poll_peers'):
+                        initial_test = mesh_monitor.poll_peers()
+                        if not initial_test:
+                            logger.warning("Initial NTP mesh monitor connectivity test failed - network may be restricted")
+                        else:
+                            logger.info(f"Initial NTP mesh monitor test successful - {len(initial_test)} peers responded")
+                            
+                except ImportError:
+                    logger.warning("ntplib not available - mesh monitoring disabled")
+                    mesh_monitor = None
+                except Exception as e:
+                    logger.error(f"Failed to initialize NTP mesh monitor (continuing without it): {e}")
+                    mesh_monitor = None
         else:
             logger.info("Mesh monitor disabled in configuration")
 

@@ -211,8 +211,60 @@ def configuration():
 def mesh_status():
     """Get mesh network monitoring status"""
     try:
+        import os
         from app import mesh_monitor
-
+        
+        # Check if using HTTP mesh
+        if os.getenv("MESH_USE_HTTP", "true").lower() == "true":
+            # Get recent HTTP mesh observations from database
+            from models import MeshObservation
+            from datetime import datetime, timedelta
+            
+            recent_cutoff = datetime.utcnow() - timedelta(minutes=10)
+            recent_obs = MeshObservation.query.filter(
+                MeshObservation.timestamp > recent_cutoff,
+                MeshObservation.protocol == 'http-date'
+            ).order_by(MeshObservation.timestamp.desc()).limit(50).all()
+            
+            if not recent_obs:
+                return jsonify({
+                    'active': False,
+                    'message': 'No recent HTTP mesh observations'
+                })
+            
+            # Calculate current stats
+            offsets = [obs.offset for obs in recent_obs]
+            if offsets:
+                import statistics
+                median_offset = statistics.median(offsets)
+                phase_gap = median_offset  # Simplified for now
+                
+                # Estimate slope from recent data
+                if len(recent_obs) >= 2:
+                    latest = recent_obs[0]
+                    older = recent_obs[-1]
+                    dt = (latest.timestamp - older.timestamp).total_seconds()
+                    slope = (latest.offset - older.offset) / dt if dt > 0 else 0.0
+                else:
+                    slope = 0.0
+                
+                return jsonify({
+                    'active': True,
+                    'timestamp': recent_obs[0].timestamp.isoformat() + 'Z',
+                    'phase_gap': phase_gap,
+                    'slope': slope,
+                    'median_offset': median_offset,
+                    'peer_count': len(set(obs.peer for obs in recent_obs)),
+                    'eta_days': abs(phase_gap / slope) / 86400.0 if slope < 0 else None,
+                    'protocol': 'http-date'
+                })
+            else:
+                return jsonify({
+                    'active': False,
+                    'message': 'No HTTP mesh data available'
+                })
+        
+        # Fall back to NTP mesh monitor
         if not mesh_monitor:
             return jsonify({
                 'active': False,
