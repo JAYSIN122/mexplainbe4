@@ -1,5 +1,6 @@
 GTI + Mesh-NTP wiring checklist (drop-in)
 0) preflight
+ This setup uses only live or archival data. If these sources are unavailable, the system fails instead of providing placeholders.
  Export env
 
 bash
@@ -7,9 +8,10 @@ Copy
 Edit
 export DB_URL=postgresql://user:pass@localhost:5432/gti   # or sqlite:///gti.db
 export APP_ENV=prod
-export DISABLE_SYNTHETIC=true
 export DATA_DIR=$PWD/data
- Ensure dirs exist
+# All data must come from live or archival sources.
+# The system fails if these sources are missing; there is no placeholder fallback.
+Ensure dirs exist
 
 bash
 Copy
