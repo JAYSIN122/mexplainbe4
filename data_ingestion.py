@@ -28,36 +28,21 @@ class DataIngestion:
 
         # Check GNSS enablement via config
         if self._is_source_enabled('GNSS'):
-            gnss_file = "data/gnss/clock_data.csv"
-            if os.getenv("GNSS_API_KEY") or os.path.exists(gnss_file):
-                self.data_sources['GNSS'] = self._ingest_gnss_data
-            else:
-                logger.warning("GNSS ingest enabled but missing GNSS_API_KEY or data file")
-                self.disabled_sources.append('GNSS')
+            self.data_sources['GNSS'] = self._ingest_gnss_data
         else:
             logger.info("GNSS stream disabled via configuration")
             self.disabled_sources.append('GNSS')
 
         # Check VLBI enablement via config
         if self._is_source_enabled('VLBI'):
-            vlbi_file = "data/vlbi/delays.csv"
-            if os.getenv("VLBI_API_KEY") or os.path.exists(vlbi_file):
-                self.data_sources['VLBI'] = self._ingest_vlbi_data
-            else:
-                logger.warning("VLBI ingest enabled but missing VLBI_API_KEY or data file")
-                self.disabled_sources.append('VLBI')
+            self.data_sources['VLBI'] = self._ingest_vlbi_data
         else:
             logger.info("VLBI stream disabled via configuration")
             self.disabled_sources.append('VLBI')
 
         # Check PTA enablement via config
         if self._is_source_enabled('PTA'):
-            pta_file = "data/pta/residuals.csv"
-            if os.getenv("PTA_API_KEY") or os.path.exists(pta_file):
-                self.data_sources['PTA'] = self._ingest_pta_data
-            else:
-                logger.warning("PTA ingest enabled but missing PTA_API_KEY or data file")
-                self.disabled_sources.append('PTA')
+            self.data_sources['PTA'] = self._ingest_pta_data
         else:
             logger.info("PTA stream disabled via configuration")
             self.disabled_sources.append('PTA')
@@ -99,8 +84,8 @@ class DataIngestion:
     def _ingest_tai_data(self):
         """Ingest TAI/UTC offset data from REAL BIPM files ONLY"""
         bipm_file = "data/bipm/utcrlab.all"
-        if os.path.exists(bipm_file) and os.path.getsize(bimp_file) > 0:
-            return self._parse_bipm_data(bimp_file)
+        if os.path.exists(bipm_file) and os.path.getsize(bipm_file) > 0:
+            return self._parse_bipm_data(bipm_file)
         else:
             logger.info("No real BIPM data file found or file is empty - returning empty")
             return []
