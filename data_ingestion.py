@@ -7,6 +7,12 @@ import logging
 from datetime import datetime, timedelta
 import os
 
+try:
+    from config_loader import config
+except ImportError:
+    # Fallback if config_loader not available
+    config = None
+
 logger = logging.getLogger(__name__)
 
 class DataIngestion:
@@ -18,26 +24,55 @@ class DataIngestion:
 
         self.disabled_sources = []
 
-        gnss_file = "data/gnss/clock_data.csv"
-        if os.getenv("GNSS_API_KEY") or os.path.exists(gnss_file):
-            self.data_sources['GNSS'] = self._ingest_gnss_data
+        # Check GNSS enablement via config
+        if self._is_source_enabled('GNSS'):
+            gnss_file = "data/gnss/clock_data.csv"
+            if os.getenv("GNSS_API_KEY") or os.path.exists(gnss_file):
+                self.data_sources['GNSS'] = self._ingest_gnss_data
+            else:
+                logger.warning("GNSS ingest enabled but missing GNSS_API_KEY or data file")
+                self.disabled_sources.append('GNSS')
         else:
-            logger.info("GNSS stream disabled - missing GNSS_API_KEY or data file")
+            logger.info("GNSS stream disabled via configuration")
             self.disabled_sources.append('GNSS')
 
-        vlbi_file = "data/vlbi/delays.csv"
-        if os.getenv("VLBI_API_KEY") or os.path.exists(vlbi_file):
-            self.data_sources['VLBI'] = self._ingest_vlbi_data
+        # Check VLBI enablement via config
+        if self._is_source_enabled('VLBI'):
+            vlbi_file = "data/vlbi/delays.csv"
+            if os.getenv("VLBI_API_KEY") or os.path.exists(vlbi_file):
+                self.data_sources['VLBI'] = self._ingest_vlbi_data
+            else:
+                logger.warning("VLBI ingest enabled but missing VLBI_API_KEY or data file")
+                self.disabled_sources.append('VLBI')
         else:
-            logger.info("VLBI stream disabled - missing VLBI_API_KEY or data file")
+            logger.info("VLBI stream disabled via configuration")
             self.disabled_sources.append('VLBI')
 
-        pta_file = "data/pta/residuals.csv"
-        if os.getenv("PTA_API_KEY") or os.path.exists(pta_file):
-            self.data_sources['PTA'] = self._ingest_pta_data
+        # Check PTA enablement via config
+        if self._is_source_enabled('PTA'):
+            pta_file = "data/pta/residuals.csv"
+            if os.getenv("PTA_API_KEY") or os.path.exists(pta_file):
+                self.data_sources['PTA'] = self._ingest_pta_data
+            else:
+                logger.warning("PTA ingest enabled but missing PTA_API_KEY or data file")
+                self.disabled_sources.append('PTA')
         else:
-            logger.info("PTA stream disabled - missing PTA_API_KEY or data file")
+            logger.info("PTA stream disabled via configuration")
             self.disabled_sources.append('PTA')
+
+    def _is_source_enabled(self, source_type):
+        """Check if a data source is enabled via config or environment variables"""
+        # Environment variable takes precedence
+        env_var = f"INGEST_{source_type.upper()}"
+        if os.getenv(env_var) == "1":
+            return True
+        
+        # Fall back to config file if available
+        if config and hasattr(config, 'is_ingestion_enabled'):
+            return config.is_ingestion_enabled(source_type)
+        
+        # Default to disabled if no config available
+        return False
 
     def ingest_all_streams(self):
         """Ingest data from all available sources"""

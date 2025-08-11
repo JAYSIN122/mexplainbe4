@@ -1,0 +1,28 @@
+
+ingestion:
+  gnss:
+    enabled: false
+    source_url: ${GNSS_SOURCE_URL}
+    api_key: ${GNSS_API_KEY}
+  vlbi:
+    enabled: false
+    source_url: ${VLBI_SOURCE_URL}
+    api_key: ${VLBI_API_KEY}
+  pta:
+    enabled: false
+    source_url: ${PTA_SOURCE_URL}
+    api_key: ${PTA_API_KEY}
+  tai:
+    enabled: true
+    source_file: "data/bipm/utcrlab.all"
+
+mesh_monitor:
+  use_http: true
+  interval_seconds: 60
+  peers:
+    - "https://google.com"
+    - "https://cloudflare.com"
+    - "https://github.com"
+    - "https://microsoft.com"
+    - "https://apple.com"
+    - "https://akamai.com"
