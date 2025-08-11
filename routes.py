@@ -222,9 +222,9 @@ def mesh_status():
             
             recent_cutoff = datetime.utcnow() - timedelta(minutes=10)
             recent_obs = MeshObservation.query.filter(
-                MeshObservation.timestamp > recent_cutoff,
+                MeshObservation.created_at > recent_cutoff,
                 MeshObservation.protocol == 'http-date'
-            ).order_by(MeshObservation.timestamp.desc()).limit(50).all()
+            ).order_by(MeshObservation.created_at.desc()).limit(50).all()
             
             if not recent_obs:
                 return jsonify({
@@ -243,14 +243,14 @@ def mesh_status():
                 if len(recent_obs) >= 2:
                     latest = recent_obs[0]
                     older = recent_obs[-1]
-                    dt = (latest.timestamp - older.timestamp).total_seconds()
+                    dt = (latest.created_at - older.created_at).total_seconds()
                     slope = (latest.offset - older.offset) / dt if dt > 0 else 0.0
                 else:
                     slope = 0.0
                 
                 return jsonify({
                     'active': True,
-                    'timestamp': recent_obs[0].timestamp.isoformat() + 'Z',
+                    'timestamp': recent_obs[0].created_at.isoformat() + 'Z',
                     'phase_gap': phase_gap,
                     'slope': slope,
                     'median_offset': median_offset,
