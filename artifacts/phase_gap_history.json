@@ -384,6 +384,13 @@
       "source": "http-mesh",
       "peer_count": 6,
       "iqr_ms": 390.471970010208
+    },
+    {
+      "as_of_utc": "2025-08-11T12:42:14.937085Z",
+      "phase_deg": -0.0028093499875166397,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 753.3655900056203
     }
   ]
 }
