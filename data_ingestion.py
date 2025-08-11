@@ -14,14 +14,37 @@ class DataIngestion:
         """Initialize data ingestion system"""
         self.data_sources = {
             'TAI': self._ingest_tai_data,
-            'GNSS': self._ingest_gnss_data,
-            'VLBI': self._ingest_vlbi_data,
-            'PTA': self._ingest_pta_data
         }
+
+        self.disabled_sources = []
+
+        gnss_file = "data/gnss/clock_data.csv"
+        if os.getenv("GNSS_API_KEY") or os.path.exists(gnss_file):
+            self.data_sources['GNSS'] = self._ingest_gnss_data
+        else:
+            logger.info("GNSS stream disabled - missing GNSS_API_KEY or data file")
+            self.disabled_sources.append('GNSS')
+
+        vlbi_file = "data/vlbi/delays.csv"
+        if os.getenv("VLBI_API_KEY") or os.path.exists(vlbi_file):
+            self.data_sources['VLBI'] = self._ingest_vlbi_data
+        else:
+            logger.info("VLBI stream disabled - missing VLBI_API_KEY or data file")
+            self.disabled_sources.append('VLBI')
+
+        pta_file = "data/pta/residuals.csv"
+        if os.getenv("PTA_API_KEY") or os.path.exists(pta_file):
+            self.data_sources['PTA'] = self._ingest_pta_data
+        else:
+            logger.info("PTA stream disabled - missing PTA_API_KEY or data file")
+            self.disabled_sources.append('PTA')
 
     def ingest_all_streams(self):
         """Ingest data from all available sources"""
         stream_data = {}
+
+        for disabled in getattr(self, 'disabled_sources', []):
+            logger.info(f"{disabled} stream disabled; skipping ingestion")
 
         for stream_type, ingest_func in self.data_sources.items():
             try:
