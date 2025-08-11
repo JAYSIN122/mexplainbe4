@@ -1,20 +1,20 @@
 
 ingestion:
   gnss:
-    enabled: false
+    enabled: true
     source_url: ${GNSS_SOURCE_URL}
     api_key: ${GNSS_API_KEY}
   vlbi:
-    enabled: false
+    enabled: true
     source_url: ${VLBI_SOURCE_URL}
     api_key: ${VLBI_API_KEY}
   pta:
-    enabled: false
+    enabled: true
     source_url: ${PTA_SOURCE_URL}
     api_key: ${PTA_API_KEY}
   tai:
     enabled: true
-    source_file: "data/bipm/utcrlab.all"
+    source_file: "data/bimp/utcrlab.all"
 
 mesh_monitor:
   use_http: true
