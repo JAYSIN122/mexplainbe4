@@ -63,7 +63,7 @@ def sanity_check(df: pd.DataFrame, name: str, units_hint: str, min_rows=50):
         raise ValueError(f"{name}: timestamps not non-decreasing")
     # Rough epoch sanity: 1970..now+1day
     nowp1 = datetime.utcnow().timestamp() + 86400
-    if (df[0].min() < 0) or (df[0].max() > nowp1 + 365*86400*50):  # allow far future by 50y if synthetic
+    if (df[0].min() < 0) or (df[0].max() > nowp1):
         raise ValueError(f"{name}: timestamp range looks wrong")
     # Value sanity (heuristics)
     if name == "GNSS":
