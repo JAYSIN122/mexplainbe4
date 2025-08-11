@@ -71,3 +71,18 @@ class AnalysisResult(db.Model):
     def set_result_data(self, data):
         """Set result data as JSON string"""
         self.result_data = json.dumps(data)
+
+
+class MeshObservation(db.Model):
+    """Observation from NTP or HTTP peer polling"""
+    id = db.Column(db.Integer, primary_key=True)
+    peer = db.Column(db.String(255), nullable=False)
+    protocol = db.Column(db.String(10), nullable=False)
+    offset = db.Column(db.Float)
+    rtt_ms = db.Column(db.Float)
+    server_time = db.Column(db.DateTime)
+    details = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<MeshObservation {self.protocol} {self.peer} offset={self.offset}>"
