@@ -6,6 +6,8 @@ import numpy as np
 import logging
 from datetime import datetime, timedelta
 import os
+import requests
+from pathlib import Path
 
 try:
     from config_loader import config
@@ -105,32 +107,32 @@ class DataIngestion:
 
     def _ingest_gnss_data(self):
         """Ingest GNSS clock data from IGS products"""
-        # Look for real IGS clock files only
-        gnss_file = "data/gnss/clock_data.csv"
-        if os.path.exists(gnss_file):
+        # Try real IGS data sources first
+        if self._fetch_igs_clock_data():
+            gnss_file = "data/gnss/clock_data.csv"
             return self._load_csv_data(gnss_file)
         else:
-            logger.info("No GNSS data file found - no data returned")
+            logger.info("No GNSS data available from IGS sources")
             return []
 
     def _ingest_vlbi_data(self):
         """Ingest VLBI delay residuals"""
-        # Look for real VLBI data files only
-        vlbi_file = "data/vlbi/delays.csv"
-        if os.path.exists(vlbi_file):
+        # Try real IVS VLBI data sources first
+        if self._fetch_ivs_vlbi_data():
+            vlbi_file = "data/vlbi/delays.csv"
             return self._load_csv_data(vlbi_file)
         else:
-            logger.info("No VLBI data file found - no data returned")
+            logger.info("No VLBI data available from IVS sources")
             return []
 
     def _ingest_pta_data(self):
         """Ingest Pulsar Timing Array TOA residuals"""
-        # Look for real PTA data files only
-        pta_file = "data/pta/residuals.csv"
-        if os.path.exists(pta_file):
+        # Try real PTA consortium data sources first
+        if self._fetch_pta_data():
+            pta_file = "data/pta/residuals.csv"
             return self._load_csv_data(pta_file)
         else:
-            logger.info("No PTA data file found - no data returned")
+            logger.info("No PTA data available from consortium sources")
             return []
 
     def _parse_bipm_data(self, filepath):
@@ -167,3 +169,171 @@ class DataIngestion:
         except Exception as e:
             logger.error(f"Error loading CSV data from {filepath}: {str(e)}")
             return []
+
+    def _fetch_igs_clock_data(self):
+        """Fetch real IGS GPS clock data from CDDIS archive"""
+        try:
+            # IGS Final Clock Products (sp3 format)
+            base_url = "https://cddis.nasa.gov/archive/gnss/products"
+            
+            # Get current GPS week
+            gps_epoch = datetime(1980, 1, 6)
+            now = datetime.utcnow()
+            days_since_epoch = (now - gps_epoch).days
+            gps_week = days_since_epoch // 7
+            
+            # Fetch recent final products (typically 2 weeks behind)
+            url = f"{base_url}/{gps_week-2:04d}/igs{gps_week-2:04d}7.clk.Z"
+            
+            logger.info(f"Fetching IGS clock data from: {url}")
+            response = requests.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                # Parse IGS clock format and save to CSV
+                return self._parse_igs_clock_file(response.content)
+            else:
+                logger.warning(f"Failed to fetch IGS data: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error fetching IGS data: {str(e)}")
+            return False
+
+    def _fetch_ivs_vlbi_data(self):
+        """Fetch real VLBI data from IVS Data Centers"""
+        try:
+            # IVS database for EOP and delays
+            base_url = "https://ivscc.gsfc.nasa.gov/products-data/data.html"
+            
+            # Fetch recent session results
+            url = f"{base_url}/eops/eop.txt"
+            
+            logger.info(f"Fetching IVS VLBI data from: {url}")
+            response = requests.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                return self._parse_ivs_eop_file(response.text)
+            else:
+                logger.warning(f"Failed to fetch IVS data: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error fetching IVS data: {str(e)}")
+            return False
+
+    def _fetch_pta_data(self):
+        """Fetch real PTA timing residuals from NANOGrav/EPTA/PPTA"""
+        try:
+            # NANOGrav public data releases
+            base_url = "https://data.nanograv.org"
+            
+            # Fetch recent timing residuals
+            url = f"{base_url}/releases/15yr/timing_residuals.txt"
+            
+            logger.info(f"Fetching NANOGrav PTA data from: {url}")
+            response = requests.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                return self._parse_nanograv_residuals(response.text)
+            else:
+                logger.warning(f"Failed to fetch NANOGrav data: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error fetching PTA data: {str(e)}")
+            return False
+
+    def _parse_igs_clock_file(self, content):
+        """Parse IGS clock file format"""
+        try:
+            # Create output directory
+            Path("data/gnss").mkdir(parents=True, exist_ok=True)
+            
+            # Simple parsing - extract satellite clock offsets
+            lines = content.decode('utf-8').splitlines()
+            data_points = []
+            
+            for line in lines:
+                if line.startswith('AS '):  # Clock record
+                    parts = line.split()
+                    if len(parts) >= 6:
+                        # Extract MJD and clock offset
+                        mjd = float(parts[2])
+                        offset_ns = float(parts[5]) * 1e9  # Convert to nanoseconds
+                        timestamp = (mjd - 40587.0) * 86400.0
+                        data_points.append([timestamp, offset_ns])
+            
+            # Save to CSV
+            if data_points:
+                np.savetxt("data/gnss/clock_data.csv", data_points, delimiter=',')
+                logger.info(f"Saved {len(data_points)} GNSS data points")
+                return True
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error parsing IGS clock data: {str(e)}")
+            return False
+
+    def _parse_ivs_eop_file(self, content):
+        """Parse IVS EOP file for VLBI delays"""
+        try:
+            # Create output directory
+            Path("data/vlbi").mkdir(parents=True, exist_ok=True)
+            
+            lines = content.splitlines()
+            data_points = []
+            
+            for line in lines:
+                if not line.strip() or line.startswith('#'):
+                    continue
+                    
+                parts = line.split()
+                if len(parts) >= 8:
+                    # Extract MJD and UT1-UTC (proxy for timing delays)
+                    mjd = float(parts[0])
+                    ut1_utc_ms = float(parts[6]) * 1000  # Convert to milliseconds
+                    timestamp = (mjd - 40587.0) * 86400.0
+                    data_points.append([timestamp, ut1_utc_ms])
+            
+            # Save to CSV
+            if data_points:
+                np.savetxt("data/vlbi/delays.csv", data_points, delimiter=',')
+                logger.info(f"Saved {len(data_points)} VLBI data points")
+                return True
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error parsing IVS data: {str(e)}")
+            return False
+
+    def _parse_nanograv_residuals(self, content):
+        """Parse NANOGrav timing residuals"""
+        try:
+            # Create output directory
+            Path("data/pta").mkdir(parents=True, exist_ok=True)
+            
+            lines = content.splitlines()
+            data_points = []
+            
+            for line in lines:
+                if not line.strip() or line.startswith('#'):
+                    continue
+                    
+                parts = line.split()
+                if len(parts) >= 4:
+                    # Extract MJD and residual
+                    mjd = float(parts[0])
+                    residual_us = float(parts[3]) * 1e6  # Convert to microseconds
+                    timestamp = (mjd - 40587.0) * 86400.0
+                    data_points.append([timestamp, residual_us])
+            
+            # Save to CSV
+            if data_points:
+                np.savetxt("data/pta/residuals.csv", data_points, delimiter=',')
+                logger.info(f"Saved {len(data_points)} PTA data points")
+                return True
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error parsing PTA data: {str(e)}")
+            return False
