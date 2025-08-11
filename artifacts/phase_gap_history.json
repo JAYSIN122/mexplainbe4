@@ -363,6 +363,27 @@
       "source": "http-mesh",
       "peer_count": 6,
       "iqr_ms": 755.2638549926692
+    },
+    {
+      "as_of_utc": "2025-08-11T12:35:16.936795Z",
+      "phase_deg": -0.002340519196877038,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 740.0221450032834
+    },
+    {
+      "as_of_utc": "2025-08-11T12:36:19.029596Z",
+      "phase_deg": -0.0021101317468532324,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 667.6392549958779
+    },
+    {
+      "as_of_utc": "2025-08-11T12:37:09.116188Z",
+      "phase_deg": -0.001887630185407103,
+      "source": "http-mesh",
+      "peer_count": 6,
+      "iqr_ms": 390.471970010208
     }
   ]
 }
