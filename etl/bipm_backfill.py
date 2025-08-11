@@ -11,7 +11,10 @@ Writes merged results into artifacts/phase_gap_history.json.
 Requires requests only if you wish to fetch missing files from BIPM.
 """
 
-import argparse, json, re, math, sys
+import argparse
+import json
+import re
+import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
