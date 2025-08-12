@@ -1,23 +1,23 @@
-import os
 import logging
+import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-# Set up logging for debugging and file output
-import os
-os.makedirs('logs', exist_ok=True)
+# Ensure the logs directory exists
+os.makedirs("logs", exist_ok=True)
 
 # Configure logging to both file and console
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s %(levelname)s:%(name)s:%(message)s',
+    format="%(asctime)s %(levelname)s:%(name)s:%(message)s",
     handlers=[
-        logging.FileHandler('logs/app.log'),
+        logging.FileHandler("logs/app.log"),
         logging.StreamHandler()
     ]
 )
+
 logger = logging.getLogger(__name__)
 
 class Base(DeclarativeBase):
