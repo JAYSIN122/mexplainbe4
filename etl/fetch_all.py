@@ -1,134 +1,143 @@
+"""Utility to download remote files with provenance logging."""
 
-"""
-ETL fetch_all.py - Downloads timing data with complete provenance tracking
-"""
+from __future__ import annotations
 
-import os
 import hashlib
 import json
-import time
+import os
 import socket
+import time
 from datetime import datetime
-import requests
 from urllib.parse import urlparse
 
-# Ensure data/_meta directory exists
-os.makedirs('data/_meta', exist_ok=True)
+import requests
 
-def resolve_ip(hostname):
-    """Resolve hostname to IP address"""
+
+PROV_PATH = "data/_meta/provenance.jsonl"
+
+
+def _resolve_ip(hostname: str | None) -> str | None:
+    """Return the IPv4 address for ``hostname`` or ``None`` if unresolved."""
+
+    if not hostname:
+        return None
     try:
         return socket.gethostbyname(hostname)
     except socket.gaierror:
         return None
 
-def download_with_provenance(url, out_path):
+
+def download(url: str, out_path: str) -> str:
+    """Fetch ``url`` to ``out_path`` and record provenance.
+
+    A ``HEAD`` request is attempted first and falls back to ``GET`` if the
+    server rejects it.  The returned provenance record is appended as a JSON
+    line to ``data/_meta/provenance.jsonl``.
     """
-    Download file with complete provenance tracking
-    Records: sha256, status_code, elapsed_ms, headers, resolved_ip, url, out_path, ts_utc
-    """
-    start_time = time.time()
-    ts_utc = datetime.utcnow().isoformat() + 'Z'
-    
-    # Parse URL and resolve IP
-    parsed_url = urlparse(url)
-    resolved_ip = resolve_ip(parsed_url.hostname)
-    
+
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    session = requests.Session()
+
+    # Attempt HEAD to discover the final URL and headers.
+    head_resp = None
     try:
-        # Make request with timeout
-        response = requests.get(url, timeout=30)
-        elapsed_ms = (time.time() - start_time) * 1000
+        head_resp = session.head(url, allow_redirects=True, timeout=30)
+        if head_resp.status_code >= 400 or head_resp.status_code in (405, 501):
+            head_resp = None
+    except requests.RequestException:
+        head_resp = None
 
-        # Create output directory if needed
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    # Use the resolved URL from HEAD if we have it.
+    get_url = head_resp.url if head_resp else url
+    parsed = urlparse(get_url)
+    resolved_ip = _resolve_ip(parsed.hostname)
 
-        # Download, handle JSON if needed, and hash content
-        content_type = response.headers.get('Content-Type', '')
-        if 'application/json' in content_type or url.endswith('.json'):
-            data = response.json()
-            text = json.dumps(data, ensure_ascii=False, indent=2)
-            content_bytes = text.encode('utf-8')
-            with open(out_path, 'w', encoding='utf-8') as f:
-                f.write(text)
-        else:
-            content_bytes = response.content
-            with open(out_path, 'wb') as f:
-                f.write(content_bytes)
+    ts_utc = datetime.utcnow().isoformat() + "Z"
+    start = time.time()
+    record: dict = {}
 
-        sha256_hash = hashlib.sha256(content_bytes)
-        
-        # Extract relevant headers
-        headers = {
-            'Date': response.headers.get('Date'),
-            'ETag': response.headers.get('ETag'),
-            'Last-Modified': response.headers.get('Last-Modified'),
-            'Content-Length': response.headers.get('Content-Length'),
-            'Content-Type': response.headers.get('Content-Type')
+    try:
+        resp = session.get(get_url, allow_redirects=True, timeout=30)
+        elapsed_ms = (time.time() - start) * 1000
+        final_url = resp.url
+
+        # Re-resolve in case of redirects to another host.
+        parsed_final = urlparse(final_url)
+        resolved_ip = _resolve_ip(parsed_final.hostname) or resolved_ip
+
+        content = resp.content
+        with open(out_path, "wb") as fh:
+            fh.write(content)
+
+        sha256 = hashlib.sha256(content).hexdigest()
+        headers = {k: resp.headers.get(k) for k in ["Date", "ETag", "Last-Modified"]}
+
+        record = {
+            "ts_utc": ts_utc,
+            "url": final_url,
+            "out_path": out_path,
+            "sha256": sha256,
+            "status_code": resp.status_code,
+            "elapsed_ms": elapsed_ms,
+            "resolved_ip": resolved_ip,
+            "headers": headers,
         }
-        
-        # Create provenance record
-        provenance_record = {
-            'ts_utc': ts_utc,
-            'url': url,
-            'out_path': out_path,
-            'sha256': sha256_hash.hexdigest(),
-            'status_code': response.status_code,
-            'elapsed_ms': elapsed_ms,
-            'resolved_ip': resolved_ip,
-            'headers': headers
+
+        return out_path
+
+    except Exception as exc:  # pragma: no cover - provenance on failure
+        elapsed_ms = (time.time() - start) * 1000
+        headers = (
+            {k: head_resp.headers.get(k) for k in ["Date", "ETag", "Last-Modified"]}
+            if head_resp
+            else {"Date": None, "ETag": None, "Last-Modified": None}
+        )
+        record = {
+            "ts_utc": ts_utc,
+            "url": get_url,
+            "out_path": out_path,
+            "sha256": None,
+            "status_code": getattr(getattr(exc, "response", None), "status_code", None),
+            "elapsed_ms": elapsed_ms,
+            "resolved_ip": resolved_ip,
+            "headers": headers,
+            "error": str(exc),
         }
-        
-        # Append to provenance log
-        with open('data/_meta/provenance.jsonl', 'a') as f:
-            f.write(json.dumps(provenance_record) + '\n')
-        
-        return provenance_record
-        
-    except Exception as e:
-        # Log failed attempts too
-        elapsed_ms = (time.time() - start_time) * 1000
-        error_record = {
-            'ts_utc': ts_utc,
-            'url': url,
-            'out_path': out_path,
-            'sha256': None,
-            'status_code': None,
-            'elapsed_ms': elapsed_ms,
-            'resolved_ip': resolved_ip,
-            'headers': None,
-            'error': str(e)
-        }
-        
-        with open('data/_meta/provenance.jsonl', 'a') as f:
-            f.write(json.dumps(error_record) + '\n')
-        
         raise
 
-def fetch_all():
-    """Fetch all timing data sources with provenance"""
+    finally:
+        os.makedirs(os.path.dirname(PROV_PATH), exist_ok=True)
+        with open(PROV_PATH, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record) + "\n")
+
+
+def fetch_all() -> list[str]:
+    """Fetch all remote resources and return a list of output paths."""
+
     sources = [
         {
-            'url': 'https://webtai.bipm.org/ftp/pub/tai/other-products/utcrlab/utcrlab.all',
-            'out_path': 'data/bipm/utcrlab.all'
+            "url": "https://webtai.bipm.org/ftp/pub/tai/other-products/utcrlab/utcrlab.all",
+            "out_path": "data/bipm/utcrlab.all",
         },
         {
-            'url': 'https://datacenter.iers.org/products/eop/rapid/standard/json/finals2000A.data.json',
-            'out_path': 'data/iers/finals2000A.data.json'
-        }
+            "url": "https://datacenter.iers.org/products/eop/rapid/standard/json/finals2000A.data.json",
+            "out_path": "data/iers/finals2000A.data.json",
+        },
     ]
-    
-    results = []
-    for source in sources:
-        try:
-            result = download_with_provenance(source['url'], source['out_path'])
-            results.append(result)
-            print(f"✅ Downloaded {source['url']} → {source['out_path']}")
-        except Exception as e:
-            print(f"❌ Failed {source['url']}: {e}")
-            results.append({'url': source['url'], 'error': str(e)})
-    
-    return results
 
-if __name__ == '__main__':
-    results = fetch_all()
-    print(f"Fetched {len(results)} sources")
+    pulled: list[str] = []
+    for src in sources:
+        try:
+            download(src["url"], src["out_path"])
+            pulled.append(src["out_path"])
+            print(f"✅ Downloaded {src['url']} → {src['out_path']}")
+        except Exception as exc:  # pragma: no cover - logged but ignored
+            print(f"❌ Failed {src['url']}: {exc}")
+
+    return pulled
+
+
+if __name__ == "__main__":  # pragma: no cover
+    pulled = fetch_all()
+    print(json.dumps({"pulled": pulled}, indent=2))
+
