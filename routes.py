@@ -701,7 +701,7 @@ def api_system_status():
 @app.route('/proof')
 def proof_page():
     """Serve the proof page"""
-    return render_template('proof.html')
+    return app.send_static_file('proof.html')
 
 @app.route('/api/provenance')
 def api_provenance():
