@@ -914,42 +914,34 @@ def api_raw():
 def api_pull():
     """Trigger ETL data pull via subprocess"""
     try:
-        # Run the ETL script
-        result = subprocess.run(
+        proc = subprocess.run(
             ['python', 'etl/fetch_all.py'],
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=120
         )
 
-        if result.returncode == 0:
-            # Parse any JSON output or just return success
-            return jsonify({
-                'ok': True,
-                'result': {
-                    'pulled': ['BIPM', 'IERS'],
-                    'stdout': result.stdout,
-                    'exit_code': result.returncode
-                }
-            })
-        else:
-            return jsonify({
-                'ok': False,
-                'error': result.stderr,
-                'stdout': result.stdout,
-                'exit_code': result.returncode
-            }), 500
+        stdout = proc.stdout or ""
+        pulled = []
+        for line in stdout.splitlines():
+            if "→" in line:
+                parts = line.split("→", 1)
+                if len(parts) > 1:
+                    pulled.append(parts[1].strip())
+
+        if proc.returncode == 0:
+            return jsonify({"ok": True, "result": {"pulled": pulled}})
+
+        return jsonify({
+            "ok": False,
+            "error": proc.stderr or "ETL process failed",
+            "result": {"pulled": pulled}
+        }), 500
 
     except subprocess.TimeoutExpired:
-        return jsonify({
-            'ok': False,
-            'error': 'ETL process timed out'
-        }), 500
+        return jsonify({"ok": False, "error": "ETL process timed out"}), 500
     except Exception as e:
-        return jsonify({
-            'ok': False,
-            'error': str(e)
-        }), 500
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route('/api/forecast_history')
 def api_forecast_history():
