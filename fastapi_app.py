@@ -51,6 +51,38 @@ def _unwrap_deg_to_rad(deg_series):
     return np.unwrap(rad)
 
 
+def _closure_rate(t_list, deg_series, min_days=150, max_days=300):
+    if len(t_list) < 20 or len(deg_series) < 20:
+        return None
+    phase_rad = _unwrap_deg_to_rad(deg_series)
+    t_end = t_list[-1]
+    t_start = t_end - timedelta(days=max_days)
+    idx = [i for i, t in enumerate(t_list) if t >= t_start]
+    if len(idx) < 20:
+        idx = list(range(max(0, len(t_list) - 200), len(t_list)))
+    t_sel = [t_list[i] for i in idx]
+    if (t_sel[-1] - t_sel[0]).days < min_days:
+        return None
+    y = phase_rad[idx]
+    t0 = t_sel[0]
+    x = np.array([(t - t0).total_seconds() / 86400.0 for t in t_sel], dtype=float)
+    for _ in range(2):
+        if len(x) < 10:
+            break
+        coeffs = np.polyfit(x, y, 1)
+        m, b = coeffs[0], coeffs[1]
+        yhat = m * x + b
+        resid = y - yhat
+        q1, q3 = np.percentile(resid, [5, 95])
+        keep = (resid >= q1) & (resid <= q3)
+        x, y = x[keep], y[keep]
+    if len(x) < 2:
+        return None
+    m, b = np.polyfit(x, y, 1)
+    phi_now = float(phase_rad[idx[-1]])
+    return {"slope_rad_per_day": float(m), "phase_gap_rad": float(phi_now)}
+
+
 def _robust_fit_eta(t_list, phase_rad, min_days=150, max_days=300):
     if len(t_list) < 20:
         return None
