@@ -51,6 +51,28 @@ def _unwrap_deg_to_rad(deg_series):
     return np.unwrap(rad)
 
 
+def _closure_rate(t_list, deg_list, lookback_days=200):
+    """Estimate closure rate (slope) from phase history.
+
+    Returns tuple of (slope_rad_per_day, latest_phase_gap_rad) or (None, None).
+    """
+    if len(t_list) < 2:
+        return None, None
+    t_end = t_list[-1]
+    t_start = t_end - timedelta(days=lookback_days)
+    idx = [i for i, t in enumerate(t_list) if t >= t_start]
+    if len(idx) < 2:
+        idx = list(range(len(t_list)))
+    t_sel = [t_list[i] for i in idx]
+    deg_sel = [deg_list[i] for i in idx]
+    rad = np.unwrap(np.deg2rad(np.array(deg_sel, dtype=float)))
+    t0 = t_sel[0]
+    x = np.array([(t - t0).total_seconds() / 86400.0 for t in t_sel], dtype=float)
+    m, b = np.polyfit(x, rad, 1)
+    latest = float(rad[-1])
+    return float(m), latest
+
+
 def _robust_fit_eta(t_list, phase_rad, min_days=150, max_days=300):
     if len(t_list) < 20:
         return None
@@ -137,6 +159,31 @@ def api_forecast_history():
         for gti in reversed(recent_gtis)
     ]
     return {"success": True, "history": history}
+
+
+@app.get("/api/zero_reset")
+def api_zero_reset():
+    t_list, deg_list = _load_phase_history()
+    slope, gap_rad = _closure_rate(t_list, deg_list) if t_list else (None, None)
+    phase_gap_deg = f64(np.rad2deg(gap_rad)) if gap_rad is not None else None
+    with flask_app.app_context():
+        latest = _get_latest_gti()
+    gti_val = f64(latest.gti_value) if latest else None
+    now = datetime.now(timezone.utc)
+    cond_slope = slope is not None and slope < 0
+    cond_gap = phase_gap_deg is not None and abs(phase_gap_deg) < 0.5
+    cond_gti = gti_val is not None and gti_val >= 0.05
+    cond_recent = bool(t_list) and (now - t_list[-1]) <= timedelta(days=7)
+    is_0000 = cond_slope and cond_gap and cond_gti and cond_recent
+    slope_deg_per_day = abs(np.rad2deg(slope)) if slope is not None else 0.0
+    gti_strength = gti_val if gti_val is not None else 0.0
+    confidence = min(1.0, (slope_deg_per_day / 1.0 + gti_strength / 0.2) / 2.0)
+    return {
+        "is_0000": bool(is_0000),
+        "phase_gap_deg": phase_gap_deg,
+        "gti": gti_val,
+        "confidence": float(confidence),
+    }
 
 
 @app.get("/api/eta")
