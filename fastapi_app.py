@@ -16,7 +16,7 @@ app = FastAPI()
 def _load_phase_history():
     p = Path("artifacts/phase_gap_history.json")
     if not p.exists():
-        return []
+        return [], []
     try:
         obj = json.loads(p.read_text())
         H = obj.get("history", [])
@@ -32,9 +32,18 @@ def _load_phase_history():
                 continue
             out.append((t, float(val)))
         out.sort(key=lambda x: x[0])
-        return out
+        t_list = [t for t, _ in out]
+        deg_list = [deg for _, deg in out]
+        return t_list, deg_list
     except Exception:
-        return []
+        return [], []
+
+
+def _get_latest_gti():
+    try:
+        return GTICalculation.query.order_by(GTICalculation.timestamp.desc()).first()
+    except Exception:
+        return None
 
 
 def _unwrap_deg_to_rad(deg_series):
@@ -133,11 +142,9 @@ def api_forecast_history():
 @app.get("/api/eta")
 def api_eta():
     """Estimate time to alignment based on phase history."""
-    H = _load_phase_history()
-    if not H:
+    t_list, deg_list = _load_phase_history()
+    if not t_list:
         return {"eta_date": None, "eta_days": None, "confidence": "low"}
-    t_list = [h[0] for h in H]
-    deg_list = [h[1] for h in H]
     phase_rad = _unwrap_deg_to_rad(deg_list)
     res = _robust_fit_eta(t_list, phase_rad)
     if not res:

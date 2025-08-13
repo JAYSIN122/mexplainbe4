@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 def _load_phase_history():
     p = Path("artifacts/phase_gap_history.json")
     if not p.exists():
-        return []
+        return [], []
     try:
         obj = json.loads(p.read_text())
         H = obj.get("history", [])
@@ -44,9 +44,17 @@ def _load_phase_history():
                 continue
             out.append((t, float(val)))
         out.sort(key=lambda x: x[0])
-        return out
+        t_list = [t for t, _ in out]
+        deg_list = [deg for _, deg in out]
+        return t_list, deg_list
     except Exception:
-        return []
+        return [], []
+
+def _get_latest_gti():
+    try:
+        return GTICalculation.query.order_by(GTICalculation.timestamp.desc()).first()
+    except Exception:
+        return None
 
 def _unwrap_deg_to_rad(deg_series):
     rad = np.deg2rad(np.array(deg_series, dtype=float))
@@ -154,7 +162,7 @@ def dashboard():
     """Main dashboard view"""
     try:
         # Get latest GTI calculation
-        latest_gti = GTICalculation.query.order_by(GTICalculation.timestamp.desc()).first()
+        latest_gti = _get_latest_gti()
 
         # Get recent GTI history for trending
         recent_gtis = GTICalculation.query.order_by(GTICalculation.timestamp.desc()).limit(100).all()
@@ -670,7 +678,7 @@ def api_system_status():
                 }
 
         # Check latest GTI calculation
-        latest_gti = GTICalculation.query.order_by(GTICalculation.timestamp.desc()).first()
+        latest_gti = _get_latest_gti()
         gti_status = {
             'has_recent_calculation': latest_gti is not None,
             'last_calculation_minutes_ago': (datetime.utcnow() - latest_gti.timestamp).total_seconds() / 60 if latest_gti else None,
@@ -994,11 +1002,9 @@ def api_forecast_history():
 
 @app.route("/api/eta", methods=["GET"])
 def api_eta():
-    H = _load_phase_history()
-    if not H:
+    t_list, deg_list = _load_phase_history()
+    if not t_list:
         return jsonify({"ok": False, "error": "No phase history available"}), 200
-    t_list = [h[0] for h in H]
-    deg_list = [h[1] for h in H]
     phase_rad = _unwrap_deg_to_rad(deg_list)
     res = _robust_fit_eta(t_list, phase_rad)
     asof = datetime.now(timezone.utc)
