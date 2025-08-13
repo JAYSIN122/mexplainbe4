@@ -82,6 +82,40 @@ def _robust_fit_eta(t_list, phase_rad, min_days=150, max_days=300):
     return {"eta_days": float(eta_days)}
 
 
+def _evaluate_zero_reset():
+    """Determine if recent phase history indicates a zero reset event."""
+    t_list, deg_list = _load_phase_history()
+    latest_gti = _get_latest_gti()
+
+    phase_gap = deg_list[-1] if deg_list else None
+    gti_val = float(getattr(latest_gti, "gti_value", 0.0)) if latest_gti else None
+
+    phase_ok = phase_gap is not None and abs(phase_gap) <= 1.0
+    gti_ok = gti_val is not None and gti_val >= 0.65
+
+    closing_ok = False
+    fresh_ok = False
+    if t_list and deg_list:
+        fresh_ok = (datetime.now(timezone.utc) - t_list[-1]) <= timedelta(hours=24)
+        if len(deg_list) >= 4:
+            recent = deg_list[-4:]
+            diffs = [recent[i] - recent[i - 1] for i in range(1, len(recent))]
+            closing_ok = all(d < 0 for d in diffs)
+
+    is_0000 = bool(phase_ok and gti_ok and closing_ok and fresh_ok)
+    if gti_val is None:
+        confidence = 0.0
+    else:
+        confidence = gti_val if is_0000 else gti_val / 2
+
+    return {
+        "is_0000": is_0000,
+        "phase_gap_deg": float(phase_gap) if phase_gap is not None else None,
+        "gti": gti_val,
+        "confidence": float(confidence),
+    }
+
+
 @app.get("/api/forecast")
 def api_forecast():
     """Return a simple forecast of GTI values."""
@@ -153,6 +187,12 @@ def api_eta():
     eta_date = (datetime.now(timezone.utc) + timedelta(days=eta_days)).date().isoformat()
     confidence = "medium" if len(t_list) > 200 else "low"
     return {"eta_date": eta_date, "eta_days": eta_days, "confidence": confidence}
+
+
+@app.get("/api/zero_reset")
+def api_zero_reset():
+    """Evaluate whether the phase gap has effectively reset to zero."""
+    return _evaluate_zero_reset()
 
 
 # Mount existing Flask app for compatibility with current routes and templates
