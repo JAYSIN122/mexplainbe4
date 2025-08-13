@@ -114,6 +114,58 @@ def _robust_fit_eta(t_list, phase_rad, min_days=150, max_days=300):
     return {"eta_days": float(eta_days)}
 
 
+def _closure_rate(t_list, deg_list, max_days=90):
+    """Compute closing slope (rad/day) and latest phase gap (rad)."""
+    if len(t_list) < 2:
+        return None, None
+    t_end = t_list[-1]
+    t_start = t_end - timedelta(days=max_days)
+    idx = [i for i, t in enumerate(t_list) if t >= t_start]
+    if len(idx) < 2:
+        idx = list(range(max(0, len(t_list) - 30), len(t_list)))
+    t_sel = [t_list[i] for i in idx]
+    y_deg = [deg_list[i] for i in idx]
+    y = _unwrap_deg_to_rad(y_deg)
+    t0 = t_sel[0]
+    x = np.array([(t - t0).total_seconds() / 86400.0 for t in t_sel], dtype=float)
+    if len(x) < 2:
+        return None, None
+    m, b = np.polyfit(x, y, 1)
+    latest_gap = float(y[-1])
+    return float(m), latest_gap
+
+
+@app.get("/api/zero_reset")
+def api_zero_reset():
+    """Assess proximity to the 0000 reset condition."""
+    t_list, deg_list = _load_phase_history()
+    slope, gap = _closure_rate(t_list, deg_list)
+    phase_gap_deg = np.rad2deg(gap) if gap is not None else None
+
+    latest_gti = _get_latest_gti()
+    gti_val = f64(latest_gti.gti_value) if latest_gti else None
+
+    now = datetime.now(timezone.utc)
+    cond_slope = slope is not None and slope < 0
+    cond_gap = phase_gap_deg is not None and abs(phase_gap_deg) < 1.0
+    cond_gti = gti_val is not None and gti_val >= 0.8
+    cond_recent = t_list and (now - t_list[-1]) <= timedelta(days=3)
+
+    is_0000 = bool(cond_slope and cond_gap and cond_gti and cond_recent)
+
+    slope_deg_per_day = np.rad2deg(abs(slope)) if slope is not None else 0.0
+    slope_factor = min(1.0, slope_deg_per_day / 1.0)
+    gti_factor = min(1.0, gti_val if gti_val is not None else 0.0)
+    confidence = float(slope_factor * gti_factor)
+
+    return {
+        "is_0000": is_0000,
+        "phase_gap_deg": f64(phase_gap_deg),
+        "gti": f64(gti_val),
+        "confidence": f64(confidence),
+    }
+
+
 @app.get("/api/forecast")
 def api_forecast():
     """Return a simple forecast of GTI values."""
