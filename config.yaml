@@ -14,7 +14,7 @@ ingestion:
     api_key: ${PTA_API_KEY}
   tai:
     enabled: true
-    source_file: "data/bimp/utcrlab.all"
+    source_file: "data/bipm/utcrlab.all"
 
 mesh_monitor:
   use_http: true

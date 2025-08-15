@@ -100,46 +100,43 @@ class DataIngestion:
             raise FileNotFoundError(msg)
 
     def _ingest_gnss_data(self):
-        """Ingest GNSS clock data from IGS products"""
-        # Try real IGS data sources first
-        if self._fetch_igs_clock_data():
-            gnss_file = "data/gnss/clock_data.csv"
+        """Ingest GNSS clock data from authentic datasets"""
+        gnss_file = "data/gnss/clock_data.csv"
+        if os.path.exists(gnss_file):
             data = self._load_csv_data(gnss_file)
             if not data:
                 raise ValueError(f"Failed to load GNSS data from {gnss_file}")
             return data
         else:
-            msg = "No GNSS data available from IGS sources"
+            msg = "No GNSS authentic dataset found"
             logger.error(msg)
-            raise RuntimeError(msg)
+            raise FileNotFoundError(msg)
 
     def _ingest_vlbi_data(self):
-        """Ingest VLBI delay residuals"""
-        # Try real IVS VLBI data sources first
-        if self._fetch_ivs_vlbi_data():
-            vlbi_file = "data/vlbi/delays.csv"
+        """Ingest VLBI delay residuals from authentic datasets"""
+        vlbi_file = "data/vlbi/delays.csv"
+        if os.path.exists(vlbi_file):
             data = self._load_csv_data(vlbi_file)
             if not data:
                 raise ValueError(f"Failed to load VLBI data from {vlbi_file}")
             return data
         else:
-            msg = "No VLBI data available from IVS sources"
+            msg = "No VLBI authentic dataset found"
             logger.error(msg)
-            raise RuntimeError(msg)
+            raise FileNotFoundError(msg)
 
     def _ingest_pta_data(self):
-        """Ingest Pulsar Timing Array TOA residuals"""
-        # Try real PTA consortium data sources first
-        if self._fetch_pta_data():
-            pta_file = "data/pta/residuals.csv"
+        """Ingest Pulsar Timing Array TOA residuals from authentic datasets"""
+        pta_file = "data/pta/residuals.csv"
+        if os.path.exists(pta_file):
             data = self._load_csv_data(pta_file)
             if not data:
                 raise ValueError(f"Failed to load PTA data from {pta_file}")
             return data
         else:
-            msg = "No PTA data available from consortium sources"
+            msg = "No PTA authentic dataset found"
             logger.error(msg)
-            raise RuntimeError(msg)
+            raise FileNotFoundError(msg)
 
     def _parse_bipm_data(self, filepath):
         """Parse BIPM UTC(lab) data"""
@@ -169,9 +166,10 @@ class DataIngestion:
     def _load_csv_data(self, filepath):
         """Load data from CSV files"""
         try:
-            data = np.loadtxt(filepath, delimiter=',')
-            # Convert to list of (timestamp, value) tuples
-            return [(row[0], row[1]) for row in data]
+            # Skip empty line and header row (first 2 rows)
+            data = np.loadtxt(filepath, delimiter=',', skiprows=2)
+            # Convert to list of (timestamp, value) tuples with Python native types
+            return [(float(row[0]), float(row[1])) for row in data]
         except Exception as e:
             logger.error(f"Error loading CSV data from {filepath}: {str(e)}")
             return []
