@@ -426,10 +426,22 @@ def api_run_analysis():
                     (dp.timestamp.timestamp(), dp.value) for dp in data_points
                 ]
 
+        # If no recent data, try using all available archival data
+        if not stream_data:
+            logger.info("No recent data found, attempting to use archival data")
+            for stream_type in ['TAI', 'GNSS', 'VLBI', 'PTA']:
+                data_points = DataStream.query.filter_by(stream_type=stream_type)\
+                    .order_by(DataStream.timestamp.desc()).limit(100).all()
+
+                if data_points:
+                    stream_data[stream_type] = [
+                        (dp.timestamp.timestamp(), dp.value) for dp in data_points
+                    ]
+
         if not stream_data:
             return jsonify({
                 'success': False,
-                'message': 'No recent data available for analysis'
+                'message': 'No data available for analysis'
             }), 400
 
         # Run GTI pipeline
