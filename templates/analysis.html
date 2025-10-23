@@ -203,7 +203,7 @@
                                     <td>
                                         <small class="text-muted">
                                             {% set data = result.get_result_data() %}
-                                            {% if data %}
+                                            {% if data and data is mapping %}
                                                 {% for key, value in data.items() %}
                                                     {% if loop.index <= 2 %}
                                                         <strong>{{ key }}:</strong> 
@@ -221,7 +221,7 @@
                                         </small>
                                     </td>
                                     <td>
-                                        {% set confidence = (data.get('confidence', 0.5) * 100) if data else 50 %}
+                                        {% set confidence = (data.get('confidence', 0.5) * 100) if (data and data is mapping) else 50 %}
                                         <div class="progress" style="height: 8px;">
                                             <div class="progress-bar 
                                                 {% if confidence >= 80 %}bg-success
