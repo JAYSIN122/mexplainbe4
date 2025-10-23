@@ -8,7 +8,9 @@ let dashboardState = {
     autoRefreshEnabled: true,
     refreshInterval: 30000,
     lastRefreshTime: null,
-    systemStatus: null
+    systemStatus: null,
+    convergenceETA: null,
+    convergenceTimestamp: null
 };
 
 // Initialize dashboard functionality
@@ -19,8 +21,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update time every second
     setInterval(updateCurrentTime, 1000);
     
+    // Update countdown every second
+    setInterval(updateCountdown, 1000);
+    
     // Check system status every 30 seconds
     setInterval(updateSystemStatus, 30000);
+    
+    // Update mesh status (and countdown) every 10 seconds
+    setInterval(updateMeshStatus, 10000);
     
     // Initial system status check
     updateSystemStatus();
@@ -65,6 +73,10 @@ function updateMeshStatus() {
                         <i class="fas fa-times-circle me-2"></i>
                         ${data.message || 'Mesh monitoring disabled'}
                     </div>`;
+                
+                // Update countdown with no data
+                dashboardState.convergenceETA = null;
+                updateCountdownDisplay();
                 return;
             }
             
@@ -72,6 +84,17 @@ function updateMeshStatus() {
                 `${data.eta_days.toFixed(2)} days` : 'Not converging';
             
             const statusClass = data.eta_days !== null && data.eta_days < 30 ? 'text-warning' : 'text-success';
+            
+            // Store ETA for countdown
+            if (data.eta_days !== null && data.eta_days > 0) {
+                dashboardState.convergenceETA = data.eta_days * 24 * 60 * 60; // Convert to seconds
+                dashboardState.convergenceTimestamp = Date.now() + (dashboardState.convergenceETA * 1000);
+            } else {
+                dashboardState.convergenceETA = null;
+                dashboardState.convergenceTimestamp = null;
+            }
+            
+            updateCountdownDisplay();
             
             meshStatusDiv.innerHTML = `
                 <div class="row g-3">
@@ -117,6 +140,117 @@ function updateMeshStatus() {
                     </div>`;
             }
         });
+}
+
+function updateCountdown() {
+    if (!dashboardState.convergenceTimestamp) {
+        return;
+    }
+    
+    updateCountdownDisplay();
+}
+
+function updateCountdownDisplay() {
+    const countdownDiv = document.getElementById('countdown-display');
+    const subtitleDiv = document.getElementById('countdown-subtitle');
+    
+    if (!countdownDiv) return;
+    
+    if (!dashboardState.convergenceTimestamp) {
+        countdownDiv.innerHTML = `
+            <h4 class="text-muted mb-0">
+                <i class="fas fa-infinity me-2"></i>
+                Convergence Not Predicted
+            </h4>`;
+        if (subtitleDiv) {
+            subtitleDiv.textContent = 'Waiting for sufficient data';
+        }
+        return;
+    }
+    
+    const now = Date.now();
+    const timeRemaining = Math.max(0, dashboardState.convergenceTimestamp - now);
+    
+    if (timeRemaining === 0) {
+        countdownDiv.innerHTML = `
+            <h2 class="text-success mb-0 animate-pulse">
+                <i class="fas fa-check-circle me-2"></i>
+                CONVERGENCE NOW!
+            </h2>`;
+        if (subtitleDiv) {
+            subtitleDiv.textContent = 'Timing sources aligned';
+        }
+        return;
+    }
+    
+    // Calculate time units
+    const seconds = Math.floor(timeRemaining / 1000);
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    // Determine display format based on time remaining
+    let displayHTML;
+    
+    if (days > 0) {
+        displayHTML = `
+            <div class="d-flex justify-content-center gap-4">
+                <div class="countdown-unit">
+                    <div class="countdown-value text-primary" style="font-size: 3rem; font-weight: bold;">${days}</div>
+                    <div class="countdown-label text-muted">DAYS</div>
+                </div>
+                <div class="countdown-unit">
+                    <div class="countdown-value text-primary" style="font-size: 3rem; font-weight: bold;">${hours}</div>
+                    <div class="countdown-label text-muted">HOURS</div>
+                </div>
+                <div class="countdown-unit">
+                    <div class="countdown-value text-primary" style="font-size: 3rem; font-weight: bold;">${minutes}</div>
+                    <div class="countdown-label text-muted">MINUTES</div>
+                </div>
+            </div>`;
+    } else if (hours > 0) {
+        displayHTML = `
+            <div class="d-flex justify-content-center gap-4">
+                <div class="countdown-unit">
+                    <div class="countdown-value text-warning" style="font-size: 3.5rem; font-weight: bold;">${hours}</div>
+                    <div class="countdown-label text-muted">HOURS</div>
+                </div>
+                <div class="countdown-unit">
+                    <div class="countdown-value text-warning" style="font-size: 3.5rem; font-weight: bold;">${minutes}</div>
+                    <div class="countdown-label text-muted">MINUTES</div>
+                </div>
+                <div class="countdown-unit">
+                    <div class="countdown-value text-warning" style="font-size: 3.5rem; font-weight: bold;">${secs}</div>
+                    <div class="countdown-label text-muted">SECONDS</div>
+                </div>
+            </div>`;
+    } else if (minutes > 0) {
+        displayHTML = `
+            <div class="d-flex justify-content-center gap-4">
+                <div class="countdown-unit">
+                    <div class="countdown-value text-danger" style="font-size: 4rem; font-weight: bold;">${minutes}</div>
+                    <div class="countdown-label text-muted">MINUTES</div>
+                </div>
+                <div class="countdown-unit">
+                    <div class="countdown-value text-danger" style="font-size: 4rem; font-weight: bold;">${secs}</div>
+                    <div class="countdown-label text-muted">SECONDS</div>
+                </div>
+            </div>`;
+    } else {
+        displayHTML = `
+            <div class="countdown-unit">
+                <div class="countdown-value text-danger animate-pulse" style="font-size: 5rem; font-weight: bold;">${secs}</div>
+                <div class="countdown-label text-muted">SECONDS</div>
+            </div>`;
+    }
+    
+    countdownDiv.innerHTML = displayHTML;
+    
+    if (subtitleDiv) {
+        const targetTime = new Date(dashboardState.convergenceTimestamp);
+        subtitleDiv.textContent = `Expected at ${targetTime.toLocaleTimeString()} on ${targetTime.toLocaleDateString()}`;
+    }
 }
 
 function updateMeshMonitor() {

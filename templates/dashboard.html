@@ -3,6 +3,26 @@
 {% block title %}Dashboard - Temporal Monitoring{% endblock %}
 
 {% block content %}
+<!-- Convergence Countdown Banner -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-dark text-white border-primary" style="border-width: 2px;">
+            <div class="card-body text-center py-4">
+                <h3 class="mb-3">
+                    <i class="fas fa-clock me-2"></i>Next Convergence Event
+                </h3>
+                <div id="countdown-display" class="mb-3">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="spinner-border text-primary me-2" role="status"></div>
+                        <span>Calculating...</span>
+                    </div>
+                </div>
+                <small class="text-muted" id="countdown-subtitle">Monitoring real-time timing data</small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <!-- GTI Status Card -->
     <div class="col-lg-4 col-md-6 mb-4">

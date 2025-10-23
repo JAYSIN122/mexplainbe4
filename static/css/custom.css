@@ -54,6 +54,37 @@
     50% { opacity: 0.6; }
 }
 
+/* Countdown animations */
+.animate-pulse {
+    animation: countdown-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes countdown-pulse {
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+.countdown-unit {
+    text-align: center;
+}
+
+.countdown-value {
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+.countdown-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 2px;
+}
+
 /* Chart containers */
 .chart-container {
     position: relative;
