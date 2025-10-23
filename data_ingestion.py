@@ -174,6 +174,25 @@ class DataIngestion:
             logger.error(f"Error loading CSV data from {filepath}: {str(e)}")
             return []
 
+    def _update_to_current_time(self, data):
+        """Update archival data timestamps to current time for real-time simulation"""
+        if not data or len(data) == 0:
+            return data
+        
+        # Get current time and the original data time range
+        current_time = datetime.utcnow().timestamp()
+        original_times = [t for t, _ in data]
+        original_max = max(original_times)
+        
+        # Calculate time offset to shift the most recent data point to current time
+        time_offset = current_time - original_max
+        
+        # Apply offset to all timestamps, preserving temporal relationships
+        updated_data = [(t + time_offset, v) for t, v in data]
+        
+        logger.info(f"Updated {len(data)} data points to current time (offset: {time_offset/3600:.1f} hours)")
+        return updated_data
+
     def _fetch_igs_clock_data(self):
         """Fetch real IGS GPS clock data from CDDIS archive"""
         try:
