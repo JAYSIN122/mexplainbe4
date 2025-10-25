@@ -3,21 +3,19 @@
 """
 eta_runner.py
 Standalone ETA calculator + stability checks + placebo + bootstrap CI.
-- Pulls from your live API if available (0000event.replit.app),
-- Or accepts manual numbers for current_value + trend_rate.
+- Pulls from the live API (0000event.replit.app).
 - Produces JSON and a human-readable text report.
 
 Usage examples:
-  python eta_runner.py --source live
-  python eta_runner.py --manual-current 0.17168922515641238 --manual-slope -2.0233986255718243e-07 --slope-units rad_per_sec
-  python eta_runner.py --source live --save report.json
+  python eta_runner.py
+  python eta_runner.py --save report.json
 
 Outputs:
 - Prints a text summary to stdout
 - Optionally writes JSON to --save
 """
 
-import argparse, json, sys, math, time
+import argparse, json, sys
 from datetime import datetime, timezone, timedelta
 import numpy as np
 from scipy.stats import kendalltau
@@ -235,16 +233,11 @@ def pull_live_history():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--source", choices=["live","manual"], default="live")
-    ap.add_argument("--manual-current", type=float, help="phase/current value (assumed radians if using phase method)")
-    ap.add_argument("--manual-slope", type=float, help="trend rate (negative = closing)")
-    ap.add_argument("--slope-units", choices=["rad_per_sec","rad_per_day","unit_per_day"], default="rad_per_sec")
     ap.add_argument("--save", help="write JSON result to this file")
     args = ap.parse_args()
 
     out = {
         "as_of_utc": now_utc().isoformat().replace("+00:00","Z"),
-        "source": args.source,
         "eta": None,
         "stability": None,
         "placebo": None,
@@ -252,12 +245,13 @@ def main():
         "notes": []
     }
 
-    # 1) Instantaneous ETA
-    if args.source == "manual":
-        if args.manual_current is None or args.manual_slope is None:
-            print("For --source manual, provide --manual-current and --manual-slope", file=sys.stderr)
-            sys.exit(2)
-        eta_days, note = compute_eta_from_instantaneous(args.manual_current, args.manual_slope, args.slope_units)
+    # 1) Instantaneous ETA from live API
+    try:
+        f = pull_live_forecast()
+        fv = f.get("forecast", {})
+        curr = float(fv.get("current_value"))
+        slope = float(fv.get("trend_rate"))
+        eta_days, note = compute_eta_from_instantaneous(curr, slope, "rad_per_sec")
         if eta_days is not None:
             out["eta"] = {
                 "eta_days": float(eta_days),
@@ -267,35 +261,18 @@ def main():
             }
         else:
             out["notes"].append(note)
-    else:
-        # live
-        try:
-            f = pull_live_forecast()
-            # Try instantaneous with explicit assumptions:
-            fv = f.get("forecast", {})
-            curr = float(fv.get("current_value"))
-            slope = float(fv.get("trend_rate"))
-            eta_days, note = compute_eta_from_instantaneous(curr, slope, "rad_per_sec")
-            if eta_days is not None:
-                out["eta"] = {
-                    "eta_days": float(eta_days),
-                    "eta_date": seconds_to_date(now_utc(), eta_days*86400.0),
-                    "method": "instantaneous",
-                    "assumptions": note
-                }
-            else:
-                out["notes"].append(note)
-        except Exception as e:
-            out["notes"].append(f"Instantaneous ETA failed: {e}")
+    except Exception as e:
+        print(f"Failed to fetch forecast: {e}", file=sys.stderr)
+        return 1
 
     # 2) History-based ETA + stability + placebo + bootstrap
     history = None
     try:
-        if args.source == "live":
-            H = pull_live_history()
-            history = H.get("history") or H.get("data") or []
+        H = pull_live_history()
+        history = H.get("history") or H.get("data") or []
     except Exception as e:
-        out["notes"].append(f"Could not load history: {e}")
+        print(f"Failed to fetch history: {e}", file=sys.stderr)
+        return 1
 
     if history:
         robust = robust_eta_from_history(history)
