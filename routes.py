@@ -94,12 +94,14 @@ def _robust_fit_eta(t_list, phase_rad, min_days=150, max_days=300):
 _last_exception_text = None
 
 # Allowed hosts for /api/ping
-ALLOWED_HOSTS = [
-    'webtai.bipm.org',
-    'datacenter.iers.org',
-    'hpiers.obspm.fr',
-    'tai.bipm.org'
-]
+# Extend this set if additional hosts are required.
+ALLOWED_HOSTS = {
+    "webtai.bipm.org",
+    "datacenter.iers.org",
+}
+
+# Cache for ping results to avoid repeated requests
+PING_CACHE = {}
 
 
 def make_serializable(obj):
@@ -765,25 +767,23 @@ def api_provenance():
 
 @app.route('/api/ping')
 def api_ping():
-    """Ping allowed hosts and return connection info"""
+    """Ping allowed hosts and return connection info."""
     try:
-        url = request.args.get('url')
+        url = request.args.get("url")
         if not url:
-            return jsonify({
-                'success': False,
-                'message': 'URL parameter required'
-            }), 400
+            return jsonify({"error": "URL parameter required"}), 400
 
-        # Parse hostname and check against allowlist
         from urllib.parse import urlparse
+
         parsed = urlparse(url)
         hostname = parsed.hostname
-
         if hostname not in ALLOWED_HOSTS:
-            return jsonify({
-                'success': False,
-                'message': f'Host {hostname} not in allowlist'
-            }), 400
+            return jsonify({"error": f"Host {hostname} not allowed"}), 400
+
+        now = time.time()
+        cached = PING_CACHE.get(url)
+        if cached and now - cached["ts"] < 30:
+            return jsonify(cached["data"])
 
         # Resolve IP
         try:
@@ -791,41 +791,52 @@ def api_ping():
         except socket.gaierror:
             resolved_ip = None
 
-        # Try HEAD first, fallback to GET
         start_time = time.time()
         try:
             response = requests.head(url, timeout=10)
-            if response.status_code == 405:  # Method not allowed
+            if response.status_code == 405 or response.status_code >= 400:
                 response = requests.get(url, timeout=10, stream=True)
-        except:
+        except Exception:
             response = requests.get(url, timeout=10, stream=True)
 
         elapsed_ms = (time.time() - start_time) * 1000
-
-        # Extract relevant headers
         headers = {
-            'Date': response.headers.get('Date'),
-            'Server': response.headers.get('Server'),
-            'Content-Type': response.headers.get('Content-Type'),
-            'Content-Length': response.headers.get('Content-Length'),
-            'Last-Modified': response.headers.get('Last-Modified')
+            "Date": response.headers.get("Date"),
+            "Server": response.headers.get("Server"),
+            "Content-Type": response.headers.get("Content-Type"),
+            "Content-Length": response.headers.get("Content-Length"),
+            "Last-Modified": response.headers.get("Last-Modified"),
         }
 
-        return jsonify({
-            'success': True,
-            'status_code': response.status_code,
-            'elapsed_ms': elapsed_ms,
-            'resolved_ip': resolved_ip,
-            'headers': headers,
-            'url': url
-        })
+        data = {
+            "status_code": response.status_code,
+            "elapsed_ms": elapsed_ms,
+            "resolved_ip": resolved_ip,
+            "headers": headers,
+        }
 
+        PING_CACHE[url] = {"ts": now, "data": data}
+
+        return jsonify(data)
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Ping failed: {str(e)}',
-            'elapsed_ms': (time.time() - start_time) * 1000 if 'start_time' in locals() else None
-        }), 500
+        err_elapsed = (
+            (time.time() - start_time) * 1000
+            if "start_time" in locals()
+            else None
+        )
+        return (
+            jsonify(
+                {
+                    "error": f"Ping failed: {e}",
+                    "status_code": None,
+                    "elapsed_ms": err_elapsed,
+                    "resolved_ip": locals().get("resolved_ip"),
+                    "headers": {},
+                }
+            ),
+            500,
+        )
+
 
 @app.route('/api/last_trace')
 def api_last_trace():
