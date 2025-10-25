@@ -30,6 +30,10 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "temporal-anomaly-detection-key")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
+# Ensure development auto-reloads templates and static files
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+app.config["TEMPLATES_AUTO_RELOAD"] = True
+
 # Configure the database
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///temporal_monitoring.db")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
