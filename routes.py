@@ -779,7 +779,7 @@ def api_ping():
         parsed = urlparse(url)
         hostname = parsed.hostname
 
-        if hostname not in ALLOWED_HOSTS:
+        if not hostname or hostname not in ALLOWED_HOSTS:
             return jsonify({
                 'success': False,
                 'message': f'Host {hostname} not in allowlist'
@@ -789,7 +789,10 @@ def api_ping():
         try:
             resolved_ip = socket.gethostbyname(hostname)
         except socket.gaierror:
-            resolved_ip = None
+            return jsonify({
+                'success': False,
+                'message': f'Host {hostname} could not be resolved'
+            }), 400
 
         # Try HEAD first, fallback to GET
         start_time = time.time()
@@ -797,8 +800,11 @@ def api_ping():
             response = requests.head(url, timeout=10)
             if response.status_code == 405:  # Method not allowed
                 response = requests.get(url, timeout=10, stream=True)
-        except:
-            response = requests.get(url, timeout=10, stream=True)
+        except requests.RequestException as e:
+            return jsonify({
+                'success': False,
+                'message': f'Request failed: {str(e)}'
+            }), 400
 
         elapsed_ms = (time.time() - start_time) * 1000
 
@@ -880,28 +886,30 @@ def api_raw():
                 'message': 'Path parameter required'
             }), 400
 
-        # Security: ensure path is under data/
-        if not path.startswith('data/'):
+        data_root = Path('data').resolve()
+        try:
+            resolved_path = Path(path).resolve()
+        except Exception:
             return jsonify({
                 'success': False,
-                'message': 'Access denied: path must be under data/'
-            }), 403
+                'message': 'Invalid path'
+            }), 400
 
-        # Security: prevent directory traversal
-        if '..' in path or path.startswith('/'):
+        # Ensure the resolved path is within data/
+        if data_root not in resolved_path.parents and resolved_path != data_root:
             return jsonify({
                 'success': False,
-                'message': 'Access denied: invalid path'
-            }), 403
+                'message': 'File not found'
+            }), 404
 
-        if not os.path.exists(path):
+        if not resolved_path.exists() or not resolved_path.is_file():
             return jsonify({
                 'success': False,
                 'message': 'File not found'
             }), 404
 
         # Serve file content
-        with open(path, 'rb') as f:
+        with open(resolved_path, 'rb') as f:
             content = f.read()
 
         # Try to determine if it's text
@@ -911,7 +919,7 @@ def api_raw():
                 'success': True,
                 'content': text_content,
                 'size': len(content),
-                'path': path
+                'path': str(resolved_path.relative_to(data_root))
             })
         except UnicodeDecodeError:
             # Binary file - return base64
@@ -921,7 +929,7 @@ def api_raw():
                 'content': base64.b64encode(content).decode('ascii'),
                 'encoding': 'base64',
                 'size': len(content),
-                'path': path
+                'path': str(resolved_path.relative_to(data_root))
             })
 
     except Exception as e:
