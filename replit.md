@@ -1,5 +1,5 @@
 # Overview
-This project is a Flask-based temporal anomaly detection system, primarily focused on Gravitational Time Interferometry (GTI). It processes timing data from various sources (BIPM, TAI, GNSS, VLBI, PTA) to identify and analyze temporal anomalies and forecast potential timeline convergence events, aiming to provide insights into global timing synchronization. The system features a web dashboard for monitoring, and advanced signal processing. A proposed extension involves integrating a decentralized NTP-based mesh network to independently detect global timing anomalies, offering a cross-validation mechanism for the GTI pipeline's findings.
+This project is a Flask-based temporal anomaly detection system, primarily focused on Gravitational Time Interferometry (GTI). It processes timing data from various sources (BIPM, TAI, GNSS, VLBI, PTA) to identify and analyze temporal anomalies and forecast potential timeline convergence events, aiming to provide insights into global timing synchronization. The system features a web dashboard with real-time countdown timers, advanced signal processing, and a background ETA prediction engine that continuously calculates time-to-convergence using robust statistical methods. A Proof page provides transparent evidence of predictions with plain-language explanations for non-technical users.
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
@@ -38,6 +38,12 @@ Preferred communication style: Simple, everyday language.
 - **Coherence Detection**: Pairwise coherence analysis across timing streams.
 - **Phase Gap Tracking**: Hilbert transform-based phase difference monitoring.
 - **Alert System**: Multi-level alerting based on GTI thresholds.
+- **ETA Runner**: Background scheduler (APScheduler) that runs every 5 minutes to:
+  - Calculate time-to-convergence using robust statistics (IQR, Kendall tau, bootstrap CI)
+  - Track phase gap trends with unwrapping and slope analysis
+  - Detect convergence events when phase gap approaches zero
+  - Store predictions in database with confidence metrics
+  - Determine convergence status: CONVERGING, DIVERGING, STABLE, or INSUFFICIENT_DATA
 
 ## Mesh Network Module (Proposed)
 - **Functionality**: Periodically pings NTP peers, records round-trip delay and offset, computes local "mesh-phase gap" and slope.
