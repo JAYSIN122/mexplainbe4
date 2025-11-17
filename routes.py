@@ -356,6 +356,56 @@ def analysis():
         logger.error(f"Error rendering analysis: {str(e)}")
         return f"Analysis page error: {str(e)}", 500
 
+
+@app.route('/proof')
+def proof():
+    """Proof page showing evidence of convergence predictions"""
+    try:
+        from models import ETAEstimate, ConvergenceEvent
+        
+        # Get latest ETA estimate
+        latest_eta = ETAEstimate.query.order_by(ETAEstimate.as_of_utc.desc()).first()
+        
+        # Get recent ETA history (last 30 estimates)
+        eta_history = ETAEstimate.query.order_by(ETAEstimate.as_of_utc.desc()).limit(30).all()
+        
+        # Get convergence events
+        convergence_events = ConvergenceEvent.query.order_by(ConvergenceEvent.event_utc.desc()).limit(10).all()
+        
+        # Get latest GTI calculation for data sources
+        latest_gti = _get_latest_gti()
+        
+        # Get stream status
+        stream_status = {}
+        for stream_type in ['TAI', 'GNSS', 'VLBI', 'PTA']:
+            latest_data = DataStream.query.filter_by(stream_type=stream_type)\
+                .order_by(DataStream.timestamp.desc()).first()
+            
+            if latest_data:
+                time_diff = datetime.utcnow() - latest_data.timestamp
+                stream_status[stream_type] = {
+                    'status': 'active' if time_diff.total_seconds() < 3600 else 'stale',
+                    'last_update': latest_data.timestamp,
+                    'latest_value': latest_data.value
+                }
+            else:
+                stream_status[stream_type] = {
+                    'status': 'offline',
+                    'last_update': None,
+                    'latest_value': None
+                }
+        
+        return render_template('proof.html',
+                             latest_eta=latest_eta,
+                             eta_history=eta_history,
+                             convergence_events=convergence_events,
+                             latest_gti=latest_gti,
+                             stream_status=stream_status)
+    
+    except Exception as e:
+        logger.error(f"Error rendering proof page: {str(e)}")
+        return f"Proof page error: {str(e)}", 500
+
 @app.route('/api/ingest_data', methods=['POST'])
 def api_ingest_data():
     """API endpoint to trigger data ingestion"""
