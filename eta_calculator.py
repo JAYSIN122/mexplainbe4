@@ -233,7 +233,10 @@ class ETACalculator:
             db.session.add(estimate)
             db.session.commit()
             
-            logger.info(f"Saved ETA estimate: {eta_days:.2f} days ({status})")
+            if eta_days is not None:
+                logger.info(f"Saved ETA estimate: {eta_days:.2f} days ({status})")
+            else:
+                logger.info(f"Saved ETA estimate: {status} (no ETA calculated)")
             return estimate
             
         except Exception as e:
