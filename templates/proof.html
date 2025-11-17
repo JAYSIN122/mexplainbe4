@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block title %}Proof - Temporal Monitoring{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="mb-3">
+                <i class="fas fa-shield-check me-2"></i>
+                Convergence Prediction Evidence
+            </h1>
+            <p class="lead text-muted">
+                Transparent evidence for our convergence predictions using real astronomical and atomic timing data
+            </p>
+        </div>
+    </div>
+
+    <!-- Current Prediction Summary -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card bg-dark border-primary">
+                <div class="card-header bg-primary">
+                    <h4 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>Current Convergence Prediction
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if latest_eta %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h5>Prediction Details</h5>
+                            <table class="table table-dark table-sm">
+                                <tr>
+                                    <th>Time Until Convergence:</th>
+                                    <td class="text-end">
+                                        {% if latest_eta.eta_days %}
+                                            <span class="badge {% if latest_eta.eta_days < 30 %}bg-danger{% elif latest_eta.eta_days < 90 %}bg-warning{% else %}bg-info{% endif %} fs-6">
+                                                {{ latest_eta.eta_days|round(1) }} days
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">Not converging</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Predicted Date:</th>
+                                    <td class="text-end">
+                                        {% if latest_eta.eta_date %}
+                                            {{ latest_eta.eta_date.strftime('%B %d, %Y at %H:%M UTC') }}
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Status:</th>
+                                    <td class="text-end">
+                                        <span class="badge 
+                                            {% if latest_eta.convergence_status == 'CONVERGING' %}bg-success
+                                            {% elif latest_eta.convergence_status == 'DIVERGING' %}bg-danger
+                                            {% elif latest_eta.convergence_status == 'STABLE' %}bg-secondary
+                                            {% else %}bg-warning{% endif %}">
+                                            {{ latest_eta.convergence_status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <h5>The Math Behind It</h5>
+                            <div class="alert alert-info">
+                                <p class="mb-2"><strong>Current Phase Gap:</strong></p>
+                                <p class="mb-2">{{ (latest_eta.phase_gap_degrees or 0)|round(6) }}° 
+                                    <span class="text-muted">({{ (latest_eta.phase_gap_rad or 0)|round(6) }} radians)</span>
+                                </p>
+                                
+                                <p class="mb-2"><strong>Rate of Change:</strong></p>
+                                <p class="mb-2">{{ (latest_eta.slope_rad_per_day or 0)|round(8) }} rad/day
+                                    {% if (latest_eta.slope_rad_per_day or 0) < 0 %}
+                                        <span class="text-success"><i class="fas fa-arrow-down"></i> Closing</span>
+                                    {% elif (latest_eta.slope_rad_per_day or 0) > 0 %}
+                                        <span class="text-danger"><i class="fas fa-arrow-up"></i> Opening</span>
+                                    {% endif %}
+                                </p>
+                                
+                                {% if latest_eta.eta_days %}
+                                <p class="mb-0"><strong>Calculation:</strong></p>
+                                <p class="mb-0 font-monospace small">
+                                    ETA = |Phase Gap| ÷ |Rate|<br>
+                                    ETA = {{ (latest_eta.phase_gap_rad or 0)|abs|round(6) }} ÷ {{ (latest_eta.slope_rad_per_day or 0)|abs|round(8) }}<br>
+                                    ETA = {{ latest_eta.eta_days|round(2) }} days
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if latest_eta.confidence_band_iqr %}
+                    <div class="row">
+                        <div class="col-12">
+                            <h5>Prediction Confidence</h5>
+                            <p>
+                                <strong>Stability Band (IQR):</strong> ± {{ latest_eta.confidence_band_iqr|round(1) }} days
+                                {% if latest_eta.confidence_band_iqr < 30 %}
+                                    <span class="text-success"><i class="fas fa-check-circle ms-2"></i> Highly stable prediction</span>
+                                {% elif latest_eta.confidence_band_iqr < 60 %}
+                                    <span class="text-info"><i class="fas fa-info-circle ms-2"></i> Moderately stable</span>
+                                {% else %}
+                                    <span class="text-warning"><i class="fas fa-exclamation-triangle ms-2"></i> Variable prediction</span>
+                                {% endif %}
+                            </p>
+                            <p class="small text-muted">{{ latest_eta.notes }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <p class="small text-muted mb-0">
+                        <i class="fas fa-clock me-1"></i>
+                        Calculated: {{ latest_eta.as_of_utc.strftime('%Y-%m-%d %H:%M:%S UTC') if latest_eta.as_of_utc else 'N/A' }}
+                    </p>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        No convergence prediction available yet. The system needs more data to calculate ETA.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-database me-2"></i>Data Sources Status</h5>
+                </div>
+                <div class="card-body">
+                    {% for stream_type, status in stream_status.items() %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>
+                            <i class="fas fa-circle 
+                                {% if status.status == 'active' %}text-success
+                                {% elif status.status == 'stale' %}text-warning
+                                {% else %}text-danger{% endif %} me-2"></i>
+                            <strong>{{ stream_type }}</strong>
+                        </span>
+                        <span class="small text-muted">
+                            {% if status.last_update %}
+                                {{ status.last_update.strftime('%H:%M UTC') }}
+                            {% else %}
+                                Offline
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                    
+                    <hr>
+                    <p class="small text-muted mb-0">
+                        <strong>TAI:</strong> International Atomic Time (BIPM)<br>
+                        <strong>GNSS:</strong> GPS satellite clocks (IGS)<br>
+                        <strong>VLBI:</strong> Radio interferometry (IVS)<br>
+                        <strong>PTA:</strong> Pulsar timing arrays
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Convergence History -->
+    {% if convergence_events %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Previous Convergence Events
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Event Date</th>
+                                    <th>Phase Gap at Event</th>
+                                    <th>Predicted Date</th>
+                                    <th>Prediction Error</th>
+                                    <th>Verification</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in convergence_events %}
+                                <tr>
+                                    <td>{{ event.event_utc.strftime('%Y-%m-%d %H:%M UTC') }}</td>
+                                    <td>{{ (event.phase_gap_at_event or 0)|round(4) }}°</td>
+                                    <td>
+                                        {% if event.predicted_utc %}
+                                            {{ event.predicted_utc.strftime('%Y-%m-%d %H:%M UTC') }}
+                                        {% else %}
+                                            <span class="text-muted">No prediction</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if event.prediction_error_hours is not none %}
+                                            {{ event.prediction_error_hours|abs|round(1) }} hours
+                                            {% if event.prediction_error_hours > 0 %}
+                                                <span class="text-info">(late)</span>
+                                            {% else %}
+                                                <span class="text-info">(early)</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if event.verification_status == 'CONFIRMED' %}bg-success
+                                            {% elif event.verification_status == 'PROBABLE' %}bg-info
+                                            {% else %}bg-warning{% endif %}">
+                                            {{ event.verification_status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ETA Prediction History Chart -->
+    {% if eta_history|length > 1 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>Prediction Stability Over Time
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="eta-history-chart" height="80"></canvas>
+                    <p class="small text-muted mt-3">
+                        This chart shows how our convergence predictions have evolved over time.
+                        A stable, narrow band indicates high confidence in the prediction.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Plain Language Explanation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark border-info">
+                <div class="card-header bg-info text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-question-circle me-2"></i>What Does This All Mean?
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <h6>In Plain English:</h6>
+                    <p>
+                        We're monitoring very precise timing signals from multiple scientific sources around the world:
+                        atomic clocks (TAI), satellite clocks (GNSS), radio telescope networks (VLBI), and pulsars (PTA).
+                    </p>
+                    <p>
+                        These sources occasionally drift in and out of alignment. When they're converging (getting closer together),
+                        we can predict when they'll align. This "convergence event" is what we're forecasting.
+                    </p>
+                    
+                    {% if latest_eta and latest_eta.eta_days %}
+                    <div class="alert alert-primary">
+                        <h6><i class="fas fa-lightbulb me-2"></i>Current Situation:</h6>
+                        <p class="mb-0">
+                            The timing sources are currently <strong>{{ (latest_eta.phase_gap_degrees or 0)|round(3) }} degrees</strong> apart.
+                            They're moving closer at a rate of about <strong>{{ ((latest_eta.slope_rad_per_day or 0)|abs * 57.2958)|round(4) }} degrees per day</strong>.
+                            At this rate, they'll align in approximately <strong>{{ latest_eta.eta_days|round(1) }} days</strong>
+                            (around {{ latest_eta.eta_date.strftime('%B %d, %Y') if latest_eta.eta_date else 'N/A' }}).
+                        </p>
+                    </div>
+                    {% endif %}
+                    
+                    <h6 class="mt-3">Why You Can Trust This:</h6>
+                    <ul>
+                        <li><strong>Real Data Only:</strong> We use actual measurements from international timing laboratories</li>
+                        <li><strong>Transparent Math:</strong> All calculations are shown above - no black boxes</li>
+                        <li><strong>Confidence Metrics:</strong> We tell you how stable the prediction is using statistical analysis</li>
+                        <li><strong>Historical Validation:</strong> Past predictions and their accuracy are recorded and visible</li>
+                        <li><strong>Multiple Sources:</strong> We cross-validate against 4+ independent timing systems</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-tachometer-alt fa-3x text-primary mb-3"></i>
+                    <h5>View Dashboard</h5>
+                    <p class="text-muted">See real-time monitoring and live countdown</p>
+                    <a href="/" class="btn btn-primary">
+                        <i class="fas fa-arrow-right me-1"></i>Go to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-microscope fa-3x text-info mb-3"></i>
+                    <h5>Technical Analysis</h5>
+                    <p class="text-muted">Detailed GTI pipeline analysis and metrics</p>
+                    <a href="/analysis" class="btn btn-info">
+                        <i class="fas fa-arrow-right me-1"></i>View Analysis
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-download fa-3x text-success mb-3"></i>
+                    <h5>Get Raw Data</h5>
+                    <p class="text-muted">Export prediction data and source measurements</p>
+                    <button class="btn btn-success" onclick="exportProofData()">
+                        <i class="fas fa-file-download me-1"></i>Export JSON
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if eta_history|length > 1 %}
+// ETA History Chart
+const etaHistoryCtx = document.getElementById('eta-history-chart');
+const etaData = [
+    {% for eta in eta_history|reverse %}
+    {
+        x: '{{ eta.as_of_utc.strftime("%Y-%m-%d %H:%M") if eta.as_of_utc else "" }}',
+        y: {{ eta.eta_days if eta.eta_days else 'null' }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+new Chart(etaHistoryCtx, {
+    type: 'line',
+    data: {
+        datasets: [{
+            label: 'Predicted Days to Convergence',
+            data: etaData,
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+            tension: 0.1,
+            pointRadius: 3
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: true,
+                labels: { color: '#fff' }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + ' days';
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'time',
+                time: { unit: 'hour' },
+                ticks: { color: '#aaa' },
+                grid: { color: '#333' }
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: 'Days Until Convergence',
+                    color: '#fff'
+                },
+                ticks: { color: '#aaa' },
+                grid: { color: '#333' }
+            }
+        }
+    }
+});
+{% endif %}
+
+function exportProofData() {
+    // Export proof data as JSON
+    fetch('/api/eta_history')
+        .then(response => response.json())
+        .then(data => {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `eta-proof-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(error => {
+            alert('Error exporting data: ' + error.message);
+        });
+}
+</script>
+{% endblock %}

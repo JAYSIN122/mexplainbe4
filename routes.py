@@ -1062,6 +1062,52 @@ def api_forecast_history():
             'message': f'Forecast history failed: {str(e)}'
         }), 500
 
+
+@app.route('/api/eta_history')
+def api_eta_history():
+    """Get ETA prediction history and convergence events"""
+    try:
+        from models import ETAEstimate, ConvergenceEvent
+        
+        # Get recent ETA estimates
+        eta_estimates = ETAEstimate.query.order_by(ETAEstimate.as_of_utc.desc()).limit(100).all()
+        
+        # Get convergence events
+        convergence_events = ConvergenceEvent.query.order_by(ConvergenceEvent.event_utc.desc()).limit(20).all()
+        
+        # Format data
+        eta_history = [eta.to_dict() for eta in eta_estimates]
+        
+        events = []
+        for event in convergence_events:
+            events.append({
+                'event_utc': event.event_utc.isoformat() if event.event_utc else None,
+                'phase_gap_at_event': event.phase_gap_at_event,
+                'predicted_utc': event.predicted_utc.isoformat() if event.predicted_utc else None,
+                'prediction_error_hours': event.prediction_error_hours,
+                'gti_value': event.gti_value,
+                'coherence': event.coherence,
+                'verification_status': event.verification_status,
+                'evidence': event.get_evidence()
+            })
+        
+        return jsonify({
+            'success': True,
+            'eta_history': eta_history,
+            'convergence_events': events,
+            'latest_eta': eta_history[0] if eta_history else None,
+            'total_estimates': len(eta_history),
+            'total_events': len(events)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in ETA history API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'ETA history failed: {str(e)}'
+        }), 500
+
+
 @app.route("/api/eta", methods=["GET"])
 def api_eta():
     t_list, deg_list = _load_phase_history()

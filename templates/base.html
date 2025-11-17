@@ -46,6 +46,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'proof' %}active{% endif %}" 
+                           href="{{ url_for('proof') }}">
+                            <i class="fas fa-shield-check me-1"></i>Proof
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'configuration' %}active{% endif %}" 
                            href="{{ url_for('configuration') }}">
                             <i class="fas fa-cog me-1"></i>Configuration
