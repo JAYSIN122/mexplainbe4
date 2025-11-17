@@ -6,22 +6,111 @@
 <!-- Convergence Countdown Banner -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card bg-dark text-white border-primary" style="border-width: 2px;">
+        <div class="card bg-dark text-white {% if latest_eta and latest_eta.eta_days and latest_eta.eta_days < 30 %}border-danger{% elif latest_eta and latest_eta.eta_days and latest_eta.eta_days < 90 %}border-warning{% else %}border-primary{% endif %}" style="border-width: 2px;">
             <div class="card-body text-center py-4">
                 <h3 class="mb-3">
                     <i class="fas fa-clock me-2"></i>Next Convergence Event
                 </h3>
+                
+                {% if latest_eta and latest_eta.eta_date %}
                 <div id="countdown-display" class="mb-3">
-                    <div class="d-flex justify-content-center align-items-center">
-                        <div class="spinner-border text-primary me-2" role="status"></div>
-                        <span>Calculating...</span>
+                    <div class="row justify-content-center">
+                        <div class="col-auto">
+                            <div class="countdown-unit">
+                                <h2 class="mb-0" id="countdown-days">--</h2>
+                                <small class="text-muted">Days</small>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="countdown-unit">
+                                <h2 class="mb-0" id="countdown-hours">--</h2>
+                                <small class="text-muted">Hours</small>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="countdown-unit">
+                                <h2 class="mb-0" id="countdown-minutes">--</h2>
+                                <small class="text-muted">Minutes</small>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="countdown-unit">
+                                <h2 class="mb-0" id="countdown-seconds">--</h2>
+                                <small class="text-muted">Seconds</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <small class="text-muted" id="countdown-subtitle">Monitoring real-time timing data</small>
+                <small class="text-muted">
+                    Predicted: <strong>{{ latest_eta.eta_date.strftime('%B %d, %Y at %H:%M UTC') }}</strong>
+                    <br>
+                    Status: <span class="badge 
+                        {% if latest_eta.convergence_status == 'CONVERGING' %}bg-success
+                        {% elif latest_eta.convergence_status == 'DIVERGING' %}bg-danger
+                        {% elif latest_eta.convergence_status == 'STABLE' %}bg-secondary
+                        {% else %}bg-warning{% endif %}">
+                        {{ latest_eta.convergence_status }}
+                    </span>
+                    {% if latest_eta.confidence_band_iqr %}
+                        &nbsp;±{{ latest_eta.confidence_band_iqr|round(1) }} days confidence
+                    {% endif %}
+                </small>
+                {% else %}
+                <div id="countdown-display" class="mb-3">
+                    <div class="alert alert-info d-inline-block">
+                        <i class="fas fa-info-circle me-2"></i>
+                        {% if latest_eta %}
+                            {{ latest_eta.convergence_status }}: No convergence predicted
+                        {% else %}
+                            Awaiting data... ETA calculator runs every 5 minutes
+                        {% endif %}
+                    </div>
+                </div>
+                <small class="text-muted">Monitoring 4 scientific timing sources (TAI, GNSS, VLBI, PTA)</small>
+                {% endif %}
+                
+                <div class="mt-3">
+                    <a href="/proof" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-shield-check me-1"></i>View Prediction Evidence
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+{% if latest_eta and latest_eta.eta_date %}
+// Countdown timer
+const targetDate = new Date('{{ latest_eta.eta_date.isoformat() }}Z');
+
+function updateCountdown() {
+    const now = new Date();
+    const diff = targetDate - now;
+    
+    if (diff <= 0) {
+        document.getElementById('countdown-days').textContent = '00';
+        document.getElementById('countdown-hours').textContent = '00';
+        document.getElementById('countdown-minutes').textContent = '00';
+        document.getElementById('countdown-seconds').textContent = '00';
+        return;
+    }
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    document.getElementById('countdown-days').textContent = String(days).padStart(2, '0');
+    document.getElementById('countdown-hours').textContent = String(hours).padStart(2, '0');
+    document.getElementById('countdown-minutes').textContent = String(minutes).padStart(2, '0');
+    document.getElementById('countdown-seconds').textContent = String(seconds).padStart(2, '0');
+}
+
+updateCountdown();
+setInterval(updateCountdown, 1000);
+{% endif %}
+</script>
 
 <div class="row">
     <!-- GTI Status Card -->
