@@ -111,7 +111,10 @@ class ETAScheduler:
                 eta_estimate = self.calculator.save_eta_estimate(gti_result)
                 
                 if eta_estimate:
-                    logger.info(f"ETA calculated: {eta_estimate.eta_days:.2f} days ({eta_estimate.convergence_status})")
+                    if eta_estimate.eta_days is not None:
+                        logger.info(f"ETA calculated: {eta_estimate.eta_days:.2f} days ({eta_estimate.convergence_status})")
+                    else:
+                        logger.info(f"ETA status: {eta_estimate.convergence_status} (no convergence predicted)")
                     
                     # Check for convergence events
                     event = self.calculator.check_for_convergence_event(gti_result)
