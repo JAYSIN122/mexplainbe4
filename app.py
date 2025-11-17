@@ -151,4 +151,13 @@ with app.app_context():
     except Exception as e:
         logger.error(f"Failed to initialize mesh monitor: {e}")
 
+    # Initialize ETA scheduler
+    try:
+        from eta_scheduler import start_scheduler
+        scheduler_interval = int(os.environ.get("ETA_SCHEDULER_INTERVAL", "300"))  # Default 5 minutes
+        start_scheduler(interval_seconds=scheduler_interval)
+        logger.info(f"ETA scheduler started (interval: {scheduler_interval}s)")
+    except Exception as e:
+        logger.error(f"Failed to start ETA scheduler: {e}")
+
     logger.info("Database initialized")
