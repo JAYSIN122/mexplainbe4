@@ -161,11 +161,16 @@ if app.config.get("USE_MESH_MONITOR"):
 def dashboard():
     """Main dashboard view"""
     try:
+        from models import ETAEstimate
+        
         # Get latest GTI calculation
         latest_gti = _get_latest_gti()
 
         # Get recent GTI history for trending
         recent_gtis = GTICalculation.query.order_by(GTICalculation.timestamp.desc()).limit(100).all()
+        
+        # Get latest ETA estimate
+        latest_eta = ETAEstimate.query.order_by(ETAEstimate.as_of_utc.desc()).first()
 
         # Get data stream status
         stream_status = {}
@@ -190,7 +195,8 @@ def dashboard():
         return render_template('dashboard.html', 
                              latest_gti=latest_gti,
                              recent_gtis=recent_gtis,
-                             stream_status=stream_status)
+                             stream_status=stream_status,
+                             latest_eta=latest_eta)
 
     except Exception as e:
         logger.error(f"Error rendering dashboard: {str(e)}")
@@ -198,7 +204,8 @@ def dashboard():
         return render_template('dashboard.html', 
                              latest_gti=None,
                              recent_gtis=[],
-                             stream_status={})
+                             stream_status={},
+                             latest_eta=None)
 
 @app.route('/configuration')
 def configuration():
