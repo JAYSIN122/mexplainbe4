@@ -6,7 +6,6 @@ description = "Temporal monitoring and analysis system with GTI pipeline"
 authors = [
     {name = "Temporal Systems", email = "admin@temporal-systems.dev"}
 ]
-readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "flask>=3.1.1",
@@ -40,9 +39,6 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 modules = ["nodejs-20", "python-3.11", "postgresql-16"]
-
-[tool.setuptools]
-packages = ["temporal_monitoring"]
 
 [nix]
 channel = "stable-25_05"
