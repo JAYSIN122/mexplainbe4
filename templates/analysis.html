@@ -209,8 +209,10 @@
                                                         <strong>{{ key }}:</strong> 
                                                         {% if value is number %}
                                                             {{ "%.4f"|format(value) }}
+                                                        {% elif value is iterable and value is not string %}
+                                                            [{{ value|length }} items]
                                                         {% else %}
-                                                            {{ value|truncate(20) }}
+                                                            {{ value|string|truncate(20) }}
                                                         {% endif %}
                                                         {% if not loop.last %}<br>{% endif %}
                                                     {% endif %}
