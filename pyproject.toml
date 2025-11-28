@@ -38,7 +38,7 @@ dev = [
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-modules = ["nodejs-20", "python-3.11", "postgresql-16"]
+modules = ["python-3.11", "postgresql-16"]
 
 [nix]
 channel = "stable-25_05"
