@@ -832,15 +832,34 @@ def api_ping():
             }), 400
 
         # Parse hostname and check against allowlist
-        from urllib.parse import urlparse
+        from urllib.parse import urlparse, urlunparse
         parsed = urlparse(url)
+        
+        # Validate scheme (only allow http/https)
+        if parsed.scheme not in ['http', 'https']:
+            return jsonify({
+                'success': False,
+                'message': 'Only http and https schemes are allowed'
+            }), 400
+        
         hostname = parsed.hostname
-
-        if hostname not in ALLOWED_HOSTS:
+        
+        # Validate hostname exists and is in allowlist
+        if not hostname or hostname not in ALLOWED_HOSTS:
             return jsonify({
                 'success': False,
                 'message': f'Host {hostname} not in allowlist'
             }), 400
+
+        # Reconstruct URL from validated components to prevent URL manipulation
+        safe_url = urlunparse((
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path or '/',
+            parsed.params,
+            parsed.query,
+            ''  # Remove fragment
+        ))
 
         # Resolve IP
         try:
@@ -851,11 +870,11 @@ def api_ping():
         # Try HEAD first, fallback to GET
         start_time = time.time()
         try:
-            response = requests.head(url, timeout=10)
+            response = requests.head(safe_url, timeout=10)
             if response.status_code == 405:  # Method not allowed
-                response = requests.get(url, timeout=10, stream=True)
+                response = requests.get(safe_url, timeout=10, stream=True)
         except:
-            response = requests.get(url, timeout=10, stream=True)
+            response = requests.get(safe_url, timeout=10, stream=True)
 
         elapsed_ms = (time.time() - start_time) * 1000
 
@@ -874,7 +893,7 @@ def api_ping():
             'elapsed_ms': elapsed_ms,
             'resolved_ip': resolved_ip,
             'headers': headers,
-            'url': url
+            'url': safe_url
         })
 
     except Exception as e:
