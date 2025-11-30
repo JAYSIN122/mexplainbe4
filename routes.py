@@ -1034,28 +1034,25 @@ def api_raw():
                 'message': 'Path parameter required'
             }), 400
 
-        # Security: ensure path is under data/
-        if not path.startswith('data/'):
+        # Security: resolve canonical path and ensure it's under data/
+        base_dir = os.path.abspath('data')
+        requested_path = os.path.abspath(path)
+        
+        # Check if the resolved path is actually within the base directory
+        if not requested_path.startswith(base_dir + os.sep) and requested_path != base_dir:
             return jsonify({
                 'success': False,
                 'message': 'Access denied: path must be under data/'
             }), 403
 
-        # Security: prevent directory traversal
-        if '..' in path or path.startswith('/'):
-            return jsonify({
-                'success': False,
-                'message': 'Access denied: invalid path'
-            }), 403
-
-        if not os.path.exists(path):
+        if not os.path.exists(requested_path):
             return jsonify({
                 'success': False,
                 'message': 'File not found'
             }), 404
 
         # Serve file content
-        with open(path, 'rb') as f:
+        with open(requested_path, 'rb') as f:
             content = f.read()
 
         # Try to determine if it's text
