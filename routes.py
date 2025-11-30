@@ -591,6 +591,84 @@ def api_gti_history():
             'message': f'Failed to get GTI history: {str(e)}'
         }), 500
 
+
+@app.route('/api/phase_gap_history')
+def api_phase_gap_history():
+    """
+    API endpoint to get phase gap history in radians format for external systems.
+    
+    Returns data in the format:
+    - as_of_utc: ISO timestamp
+    - phase_gap_rad: phase gap in radians (converted from degrees)
+    - slope_rad_per_day: rate of change in radians per day
+    - notes: source/method information
+    
+    Query params:
+    - days: number of days of history (default 30)
+    - limit: max number of records (default 500)
+    """
+    try:
+        days = request.args.get('days', 30, type=int)
+        limit = request.args.get('limit', 500, type=int)
+        cutoff_time = datetime.utcnow() - timedelta(days=days)
+
+        gti_calcs = GTICalculation.query.filter(
+            GTICalculation.timestamp >= cutoff_time,
+            GTICalculation.phase_gap.isnot(None)
+        ).order_by(GTICalculation.timestamp.asc()).limit(limit + 1).all()
+
+        if len(gti_calcs) < 2:
+            return jsonify({
+                'success': True,
+                'records': [],
+                'message': 'Insufficient data for slope calculation'
+            })
+
+        records = []
+        for i in range(1, len(gti_calcs)):
+            curr = gti_calcs[i]
+            prev = gti_calcs[i - 1]
+
+            curr_phase_deg = curr.phase_gap if curr.phase_gap is not None else 0
+            prev_phase_deg = prev.phase_gap if prev.phase_gap is not None else 0
+            curr_phase_rad = np.deg2rad(curr_phase_deg)
+            prev_phase_rad = np.deg2rad(prev_phase_deg)
+
+            time_diff_seconds = (curr.timestamp - prev.timestamp).total_seconds()
+            time_diff_days = time_diff_seconds / 86400.0
+
+            if time_diff_days > 0:
+                slope_rad_per_day = (curr_phase_rad - prev_phase_rad) / time_diff_days
+            else:
+                slope_rad_per_day = 0.0
+
+            as_of_utc = curr.timestamp.replace(tzinfo=timezone.utc).isoformat().replace('+00:00', 'Z')
+
+            records.append({
+                'as_of_utc': as_of_utc,
+                'phase_gap_rad': float(curr_phase_rad),
+                'slope_rad_per_day': float(slope_rad_per_day),
+                'notes': f'GTI:{curr.gti_value:.4f}' if curr.gti_value else 'from_gti_calc'
+            })
+
+        return jsonify({
+            'success': True,
+            'records': records,
+            'total_records': len(records),
+            'unit_info': {
+                'phase_gap_rad': 'radians [0, pi]',
+                'slope_rad_per_day': 'radians per day (negative = converging)'
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error in phase gap history API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Failed to get phase gap history: {str(e)}'
+        }), 500
+
+
 @app.route('/api/stream_data/<stream_type>')
 def api_stream_data(stream_type):
     """API endpoint to get data for a specific stream"""
