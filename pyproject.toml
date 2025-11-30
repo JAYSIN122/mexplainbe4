@@ -38,6 +38,14 @@ dev = [
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+py-modules = ["main", "app", "routes", "models", "gti_pipeline", "data_ingestion", "signal_processing", "bayesian_analysis", "eta_calculator", "eta_runner", "eta_scheduler", "mesh_monitor", "mesh_http_date", "config_loader", "fastapi_app"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["analysis*", "etl*"]
+exclude = ["tests*", "logs*", "data*", "static*", "templates*", "artifacts*", "migrations*", "node_modules*", "attached_assets*"]
+
 modules = ["python-3.11", "postgresql-16"]
 
 [nix]
