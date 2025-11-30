@@ -68,11 +68,19 @@ function updateMeshStatus() {
             if (!meshStatusDiv) return;
             
             if (!data.active) {
-                meshStatusDiv.innerHTML = `
-                    <div class="text-center text-muted">
-                        <i class="fas fa-times-circle me-2"></i>
-                        ${data.message || 'Mesh monitoring disabled'}
-                    </div>`;
+                // Use safe DOM manipulation to prevent XSS
+                const container = document.createElement('div');
+                container.className = 'text-center text-muted';
+                
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-times-circle me-2';
+                container.appendChild(icon);
+                
+                const messageText = document.createTextNode(data.message || 'Mesh monitoring disabled');
+                container.appendChild(messageText);
+                
+                meshStatusDiv.innerHTML = '';
+                meshStatusDiv.appendChild(container);
                 
                 // Update countdown with no data
                 dashboardState.convergenceETA = null;
@@ -96,38 +104,49 @@ function updateMeshStatus() {
             
             updateCountdownDisplay();
             
-            meshStatusDiv.innerHTML = `
-                <div class="row g-3">
-                    <div class="col-6">
-                        <div class="text-center">
-                            <div class="scientific-value ${statusClass}">${data.phase_gap.toFixed(6)}s</div>
-                            <small class="text-muted">Phase Gap</small>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-center">
-                            <div class="scientific-value">${data.slope.toExponential(2)}</div>
-                            <small class="text-muted">Slope (s/s)</small>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-center">
-                            <div class="scientific-value ${statusClass}">${etaDisplay}</div>
-                            <small class="text-muted">ETA to Zero</small>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-center">
-                            <div class="scientific-value text-info">${data.peer_count}</div>
-                            <small class="text-muted">Active Peers</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="text-center mt-2">
-                    <small class="text-muted">
-                        Last updated: ${new Date(data.timestamp).toLocaleTimeString()}
-                    </small>
-                </div>`;
+            // Use safe DOM manipulation to prevent XSS
+            const container = document.createElement('div');
+            container.className = 'row g-3';
+            
+            // Phase Gap
+            const phaseCol = document.createElement('div');
+            phaseCol.className = 'col-6';
+            phaseCol.innerHTML = '<div class="text-center"><div class="scientific-value ' + statusClass + '"></div><small class="text-muted">Phase Gap</small></div>';
+            phaseCol.querySelector('.scientific-value').textContent = data.phase_gap.toFixed(6) + 's';
+            container.appendChild(phaseCol);
+            
+            // Slope
+            const slopeCol = document.createElement('div');
+            slopeCol.className = 'col-6';
+            slopeCol.innerHTML = '<div class="text-center"><div class="scientific-value"></div><small class="text-muted">Slope (s/s)</small></div>';
+            slopeCol.querySelector('.scientific-value').textContent = data.slope.toExponential(2);
+            container.appendChild(slopeCol);
+            
+            // ETA
+            const etaCol = document.createElement('div');
+            etaCol.className = 'col-6';
+            etaCol.innerHTML = '<div class="text-center"><div class="scientific-value ' + statusClass + '"></div><small class="text-muted">ETA to Zero</small></div>';
+            etaCol.querySelector('.scientific-value').textContent = etaDisplay;
+            container.appendChild(etaCol);
+            
+            // Peer Count
+            const peerCol = document.createElement('div');
+            peerCol.className = 'col-6';
+            peerCol.innerHTML = '<div class="text-center"><div class="scientific-value text-info"></div><small class="text-muted">Active Peers</small></div>';
+            peerCol.querySelector('.scientific-value').textContent = String(data.peer_count);
+            container.appendChild(peerCol);
+            
+            // Last updated timestamp
+            const timestampDiv = document.createElement('div');
+            timestampDiv.className = 'text-center mt-2';
+            const timestampSmall = document.createElement('small');
+            timestampSmall.className = 'text-muted';
+            timestampSmall.textContent = 'Last updated: ' + new Date(data.timestamp).toLocaleTimeString();
+            timestampDiv.appendChild(timestampSmall);
+            
+            meshStatusDiv.innerHTML = '';
+            meshStatusDiv.appendChild(container);
+            meshStatusDiv.appendChild(timestampDiv);
         })
         .catch(error => {
             console.error('Error updating mesh status:', error);
@@ -279,10 +298,17 @@ function showAlert(message, type = 'info') {
     alertDiv.style.top = '20px';
     alertDiv.style.right = '20px';
     alertDiv.style.zIndex = '9999';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
+    
+    // Safely add message as text content to prevent XSS
+    alertDiv.textContent = message;
+    
+    // Add close button
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'btn-close';
+    closeBtn.setAttribute('data-bs-dismiss', 'alert');
+    alertDiv.appendChild(closeBtn);
+    
     document.body.appendChild(alertDiv);
     
     // Auto-remove after 5 seconds
