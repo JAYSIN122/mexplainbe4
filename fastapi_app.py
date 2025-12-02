@@ -239,5 +239,35 @@ def api_eta():
     return {"eta_date": eta_date, "eta_days": eta_days, "confidence": confidence}
 
 
+@app.get("/api/zero_reset")
+def api_zero_reset():
+    """Evaluate zero-reset conditions based on phase history and GTI."""
+    t_list, deg_list = _load_phase_history()
+    res = _closure_rate(t_list, deg_list)
+    slope_deg = None
+    phase_gap_deg = None
+    if res:
+        slope_deg = np.rad2deg(res.get("slope_rad_per_day"))
+        phase_gap_deg = np.rad2deg(res.get("phase_gap_rad"))
+    latest_gti_row = _get_latest_gti()
+    gti = f64(latest_gti_row.gti_value) if latest_gti_row else None
+    is_0000 = False
+    confidence = 0.0
+    if slope_deg is not None and phase_gap_deg is not None and gti is not None and t_list:
+        negative_slope = slope_deg < 0
+        small_gap = abs(phase_gap_deg) <= 1.0
+        sufficient_gti = gti >= 0.65
+        recent = (datetime.now(timezone.utc) - t_list[-1]) <= timedelta(hours=24)
+        is_0000 = negative_slope and small_gap and sufficient_gti and recent
+        slope_norm = min(abs(slope_deg) / 1.0, 1.0)
+        confidence = (gti + slope_norm) / 2.0
+    return {
+        "is_0000": bool(is_0000),
+        "phase_gap_deg": f64(phase_gap_deg),
+        "gti": f64(gti),
+        "confidence": f64(confidence),
+    }
+
+
 # Mount existing Flask app for compatibility with current routes and templates
 app.mount("/", WSGIMiddleware(flask_app))
