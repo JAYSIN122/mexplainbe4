@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Proof</title>
+</head>
+<body>
+  <button onclick="ping('https://webtai.bipm.org/')">Ping BIPM</button>
+  <button onclick="ping('https://datacenter.iers.org/')">Ping IERS</button>
+  <button onclick="pull()">Pull Now</button>
+  <button onclick="fetchJson('/api/forecast').then(d => {document.getElementById('forecast_pre').textContent = JSON.stringify(d, null, 2); openModal('m_forecast');});">Current Forecast</button>
+  <button onclick="fetchJson('/api/forecast_history').then(d => {document.getElementById('forecast_pre').textContent = JSON.stringify(d, null, 2); openModal('m_forecast');});">10-yr Backtest</button>
+  <button onclick="fetchJson('/api/last_trace').then(d => {document.getElementById('logs_title').textContent = 'Last Traceback'; document.getElementById('logs_pre').textContent = JSON.stringify(d, null, 2); openModal('m_logs');});">Last Traceback</button>
+  <button onclick="fetchJson('/api/logs?k=200').then(d => {document.getElementById('logs_title').textContent = 'Tail Logs'; document.getElementById('logs_pre').textContent = JSON.stringify(d, null, 2); openModal('m_logs');});">Tail Logs</button>
+
+  <dialog id="m_ping">
+    <pre id="ping_pre"></pre>
+    <button onclick="closeModal('m_ping')">Close</button>
+  </dialog>
+
+  <dialog id="m_prov">
+    <pre id="prov_pre"></pre>
+    <button onclick="closeModal('m_prov')">Close</button>
+  </dialog>
+
+  <dialog id="m_forecast">
+    <pre id="forecast_pre"></pre>
+    <button onclick="closeModal('m_forecast')">Close</button>
+  </dialog>
+
+  <dialog id="m_logs">
+    <h2 id="logs_title"></h2>
+    <pre id="logs_pre"></pre>
+    <button onclick="closeModal('m_logs')">Close</button>
+  </dialog>
+
+<script>
+async function fetchJson(path) {
+  const res = await fetch(path);
+  return await res.json();
+}
+
+async function ping(url) {
+  const data = await fetchJson('/api/ping?url=' + encodeURIComponent(url));
+  document.getElementById('ping_pre').textContent = JSON.stringify(data, null, 2);
+  openModal('m_ping');
+}
+
+async function pull() {
+  await fetch('/api/pull', {method: 'POST'});
+  await loadProv();
+}
+
+async function loadProv() {
+  const data = await fetchJson('/api/provenance?n=50');
+  document.getElementById('prov_pre').textContent = JSON.stringify(data, null, 2);
+  openModal('m_prov');
+}
+
+function openModal(id) {
+  document.getElementById(id).showModal();
+}
+
+function closeModal(id) {
+  document.getElementById(id).close();
+}
+</script>
+</body>
+</html>
