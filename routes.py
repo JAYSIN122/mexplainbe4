@@ -860,43 +860,35 @@ def proof_page():
 
 @app.route('/api/provenance')
 def api_provenance():
-    """Return last N lines from provenance.jsonl"""
+    """Tail the provenance log and return the last N records."""
+    n = request.args.get("n", 50, type=int)
+    path = Path("data/_meta/provenance.jsonl")
+
+    # If the provenance file doesn't exist yet, return an empty list
+    if not path.exists():
+        return jsonify([])
+
     try:
-        n = request.args.get('n', 50, type=int)
-        provenance_file = 'data/_meta/provenance.jsonl'
+        from collections import deque
 
-        if not os.path.exists(provenance_file):
-            return jsonify({
-                'success': True,
-                'records': [],
-                'message': 'No provenance data yet'
-            })
+        # Efficiently read only the last N lines
+        with path.open("r") as f:
+            lines = deque(f, maxlen=n)
 
-        # Read last N lines
-        with open(provenance_file, 'r') as f:
-            lines = f.readlines()
-
-        # Get last N lines and parse JSON
-        last_lines = lines[-n:] if len(lines) > n else lines
         records = []
-        for line in last_lines:
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
             try:
-                records.append(json.loads(line.strip()))
+                records.append(json.loads(line))
             except json.JSONDecodeError:
                 continue
 
-        return jsonify({
-            'success': True,
-            'records': records,
-            'total_records': len(lines)
-        })
-
+        return jsonify(records)
     except Exception as e:
-        logger.error(f"Error in provenance API: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': f'Failed to get provenance: {str(e)}'
-        }), 500
+        logger.error(f"Error reading provenance: {e}")
+        return jsonify([]), 500
 
 @app.route('/api/ping')
 def api_ping():
